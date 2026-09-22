@@ -1257,6 +1257,75 @@ do
 end
 
 -- ============================================================
+-- ФЕРМА: DAILY QUEST / AUTO COLLECT / AUTO UPGRADE
+-- ============================================================
+local Network
+
+local function getNetwork()
+    if Network then return Network end
+    local ok, n = pcall(function()
+        return game:GetService("ReplicatedStorage")
+            :WaitForChild("Shared", 5)
+            :WaitForChild("Packages", 5)
+            :WaitForChild("Network", 5)
+    end)
+    if ok then Network = n end
+    return Network
+end
+
+-- общий каркас для тумблеров вида "пока включено — повторять действие"
+local function makeLoopToggle(label, action, interval)
+    local active, token = false, 0
+    return {
+        onToggle = function(state)
+            active = state
+            token = token + 1
+            local id = token
+            if state then
+                task.spawn(function()
+                    while active and token == id do
+                        local ok, err = pcall(action)
+                        if not ok then
+                            print("[Sakura] " .. label .. " error: " .. tostring(err))
+                        end
+                        task.wait(interval)
+                    end
+                end)
+            end
+        end,
+    }
+end
+
+-- открывает и пытается забрать ежедневный квест. Известен только один
+-- вариант награды ("Lifts") — если квестов несколько разных, пришли их
+-- названия, добавлю перебор по списку
+local DailyQuestHandlers = makeLoopToggle("Daily Quest", function()
+    local net = getNetwork()
+    if not net then return end
+    net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
+    task.wait(0.3)
+    net:WaitForChild("rev_DailyQuests_Claim", 5):FireServer("Lifts")
+end, 30)
+
+-- перебирает слоты сбора 1-30
+local AutoCollectHandlers = makeLoopToggle("Auto Collect", function()
+    local net = getNetwork()
+    if not net then return end
+    local ev = net:WaitForChild("rev_B_Collect", 5)
+    for i = 1, 30 do
+        ev:FireServer(i)
+        task.wait(0.05)
+    end
+end, 3)
+
+-- повторяет апгрейд с аргументом 8 (тем же, что был в примере)
+local AutoUpgradeHandlers = makeLoopToggle("Auto Upgrade", function()
+    local net = getNetwork()
+    if not net then return end
+    net:WaitForChild("rev_B_Upgrade", 5):FireServer(8)
+end, 1)
+
+-- ============================================================
 -- ТАБЫ
 -- ============================================================
 local TABS = {
@@ -1298,8 +1367,19 @@ type = "input"
             handlers = KickHandlers  
         },  
         {  
-            title = "Функция 2",  
-            desc = "Заглушка функции Farm"  
+            title = "Daily Quest",  
+            desc = "Открыть и забрать ежедневный квест",  
+            handlers = DailyQuestHandlers  
+        },  
+        {  
+            title = "Auto Collect",  
+            desc = "Сбор слотов 1-30 по кругу",  
+            handlers = AutoCollectHandlers  
+        },  
+        {  
+            title = "Auto Upgrade",  
+            desc = "Повтор апгрейда (аргумент 8)",  
+            handlers = AutoUpgradeHandlers  
         },  
     }  
 },  
