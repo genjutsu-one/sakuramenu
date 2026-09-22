@@ -231,6 +231,46 @@ if kind == "player" then
         BackgroundColor3 = W,  
     }, holder))  
 
+elseif kind == "home" then
+    local roof = newFrame({
+        Size = UDim2.fromOffset(size * 0.7, size * 0.45),
+        Position = UDim2.new(0.5, 0, 0.27, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Rotation = 45,
+        BackgroundColor3 = W,
+    }, holder)
+    corner(2, roof)
+    newFrame({
+        Size = UDim2.fromOffset(size * 0.62, size * 0.5),
+        Position = UDim2.new(0.5, 0, 0.65, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = W,
+    }, holder)
+    newFrame({
+        Size = UDim2.fromOffset(size * 0.16, size * 0.28),
+        Position = UDim2.new(0.5, 0, 0.72, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = CONFIG.BgColor,
+    }, holder)
+
+elseif kind == "teleport" then
+    local arrow = newFrame({
+        Size = UDim2.fromOffset(size * 0.58, size * 0.16),
+        Position = UDim2.new(0.35, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = W,
+    }, holder)
+    corner(2, arrow)
+    for _, rotation in ipairs({45, -45}) do
+        corner(2, newFrame({
+            Size = UDim2.fromOffset(size * 0.38, size * 0.16),
+            Position = UDim2.new(0.7, 0, 0.5, rotation == 45 and -size * 0.12 or size * 0.12),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Rotation = rotation,
+            BackgroundColor3 = W,
+        }, holder))
+    end
+
 elseif kind == "farm" then  
 
     corner(size, newFrame({  
@@ -596,6 +636,48 @@ if handlers and handlers.onToggle then
 
 end
 
+local function createActionCard(parent, title, desc, key, action)
+    local card = newFrame({
+        Name = "ActionCard",
+        Size = UDim2.new(1, 0, 0, CARD_H),
+        BackgroundColor3 = CONFIG.CardColor,
+    }, parent)
+    corner(8, card)
+    stroke(card, CONFIG.AccentColor, 0.9, 1)
+    newLabel({
+        Text = title,
+        Position = UDim2.new(0, 14, 0, 6),
+        Size = UDim2.new(1, -72, 0, 16),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.GothamBold,
+        TextSize = 13,
+    }, card)
+    newLabel({
+        Text = desc,
+        Position = UDim2.new(0, 14, 0, 24),
+        Size = UDim2.new(1, -72, 0, 16),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = CONFIG.MutedTextColor,
+        TextSize = 11,
+    }, card)
+    newLabel({
+        Text = ">",
+        Position = UDim2.new(1, -42, 0, 0),
+        Size = UDim2.fromOffset(28, CARD_H),
+        TextXAlignment = Enum.TextXAlignment.Center,
+        Font = Enum.Font.GothamBold,
+        TextSize = 22,
+    }, card)
+    local hit = newButton({
+        Size = UDim2.fromScale(1, 1),
+        ZIndex = 5,
+    }, card)
+    hit.MouseButton1Click:Connect(function()
+        if action then action() end
+    end)
+    return card
+end
+
 -- ============================================================
 -- SLIDER
 -- ============================================================
@@ -806,10 +888,38 @@ build = function(panel, saved)
 
 end
 
+local function createTextInputCard(parent, title, desc, key, placeholder, onSave)
+    return createCard(parent, title, desc, key, {
+        expandedH = 88,
+        build = function(panel, saved)
+            local box = Instance.new("TextBox")
+            box.Name = "Input"
+            box.Size = UDim2.fromOffset(180, 30)
+            box.Position = UDim2.new(1, 0, 0, 0)
+            box.AnchorPoint = Vector2.new(1, 0)
+            box.BackgroundColor3 = CONFIG.BgColor
+            box.TextColor3 = CONFIG.AccentColor
+            box.PlaceholderText = placeholder or ""
+            box.PlaceholderColor3 = CONFIG.MutedTextColor
+            box.Font = Enum.Font.GothamMedium
+            box.TextSize = 12
+            box.ClearTextOnFocus = false
+            box.Text = saved.text or ""
+            box.Parent = panel
+            corner(6, box)
+            stroke(box, CONFIG.AccentColor, 0.85, 1)
+            box.FocusLost:Connect(function()
+                saveField(key, "text", box.Text)
+                if onSave then onSave(box.Text) end
+            end)
+        end,
+    })
+end
+
 -- ============================================================
 -- STEPPER
 -- ============================================================
-local function createPercentRow(parent, title, options, default, onSelect)
+local function createPercentRow(parent, title, options, default, onSelect, suffix)
 local row = newFrame({
 Name = "StepperRow",
 Size = UDim2.new(1, 0, 0, 44),
@@ -865,7 +975,7 @@ end
 local btnMinus = stepButton(0, "-")  
 
 local valueLabel = newLabel({  
-    Text = options[index] .. "%",  
+    Text = options[index] .. (suffix or "%"),  
     Position = UDim2.new(0, 30, 0, 0),  
     Size = UDim2.fromOffset(52, 26),  
     Font = Enum.Font.GothamBold,  
@@ -876,7 +986,7 @@ local valueLabel = newLabel({
 local btnPlus = stepButton(86, "+")  
 
 local function apply()  
-    valueLabel.Text = options[index] .. "%"  
+    valueLabel.Text = options[index] .. (suffix or "%")  
 
     if onSelect then  
         onSelect(options[index])  
@@ -1018,6 +1128,7 @@ end,
 local savedJump = SavedState.controls["player_1"] or {}
 local Jump = {
     enabled = savedJump.on or false,
+    value = savedJump.value or 50,
     original = 50,
 }
 
@@ -1025,12 +1136,16 @@ local function applyJump()
     local hum = getHumanoid()
     if not hum then return end
     hum.UseJumpPower = true
-    hum.JumpPower = Jump.enabled and 100 or Jump.original
+    hum.JumpPower = Jump.enabled and Jump.value * 2 or Jump.original
 end
 
 bind(RunService.Heartbeat, applyJump)
 
 local JumpHandlers = {
+    onChange = function(value)
+        Jump.value = value
+        applyJump()
+    end,
     onToggle = function(state)
         local hum = getHumanoid()
         if state then
@@ -1299,7 +1414,7 @@ end
 -- открывает и пытается забрать ежедневный квест. Известен только один
 -- вариант награды ("Lifts") — если квестов несколько разных, пришли их
 -- названия, добавлю перебор по списку
-local DailyQuestHandlers = makeLoopToggle("Daily Quest", function()
+local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
     local net = getNetwork()
     if not net then return end
     net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
@@ -1308,14 +1423,18 @@ local DailyQuestHandlers = makeLoopToggle("Daily Quest", function()
 end, 30)
 
 -- перебирает слоты сбора 1-30
-local AutoCollectHandlers = makeLoopToggle("Auto Collect", function()
+local findOwnedPlot
+local teleportToOwnedPlot
+
+local AutoCollectHandlers = makeLoopToggle("Auto Collect Cash", function()
     local net = getNetwork()
     if not net then return end
+    teleportToOwnedPlot()
+    task.wait(0.2)
     local ev = net:WaitForChild("rev_B_Collect", 5)
-    for i = 1, 30 do
-        ev:FireServer(i)
-        task.wait(0.05)
-    end
+    local plot = findOwnedPlot()
+    local plotName = plot and string.match(plot.Name, "%d+")
+    if plotName then ev:FireServer(tonumber(plotName)) end
 end, 3)
 
 -- повторяет апгрейд с аргументом 8 (тем же, что был в примере)
@@ -1325,17 +1444,118 @@ local AutoUpgradeHandlers = makeLoopToggle("Auto Upgrade", function()
     net:WaitForChild("rev_B_Upgrade", 5):FireServer(8)
 end, 1)
 
+local AutoTrainingHandlers = makeLoopToggle("Auto Training Weight", function()
+    local player = Players.LocalPlayer
+    local inventory = player:FindFirstChild("Inventory") or player:FindFirstChild("Backpack")
+    local firstItem = inventory and inventory:GetChildren()[1]
+    if firstItem and player.Character then
+        firstItem.Parent = player.Character
+    end
+    local net = getNetwork()
+    if net then net:WaitForChild("rev_TaviMishkal", 5):FireServer() end
+    Players.LocalPlayer:WaitForChild("ClientLoader")
+end, 1)
+
+local SpeedUpgradeAmount = 1
+
+local SpeedUpgradeHandlers = makeLoopToggle("Speed Upgrade", function()
+    local net = getNetwork()
+    if net then net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(SpeedUpgradeAmount) end
+    Players.LocalPlayer:WaitForChild("ClientLoader")
+end, 1)
+
+local SellAllHandlers = makeLoopToggle("Sell All Umas", function()
+    local net = getNetwork()
+    if net then net:WaitForChild("ref_B_SellAll", 5):InvokeServer() end
+    local prompt = workspace:WaitForChild("NPCs", 5)
+        :WaitForChild("SellUma", 5)
+        :WaitForChild("ProximityPart", 5)
+        :WaitForChild("ProximityPrompt", 5)
+        :WaitForChild("Script", 5)
+end, 2)
+
+local OfflineClaimHandlers = makeLoopToggle("Auto Offline Claim", function()
+    local net = getNetwork()
+    if net then net:WaitForChild("rev_Offline_Claim", 5):FireServer() end
+    Players.LocalPlayer:WaitForChild("ClientLoader")
+end, 5)
+
+local function getPlayerRoot()
+    local char = Players.LocalPlayer.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+
+local function teleportToCFrame(cframe)
+    local root = getPlayerRoot()
+    if root then root.CFrame = cframe + Vector3.new(0, 3, 0) end
+end
+
+findOwnedPlot = function()
+    local player = Players.LocalPlayer
+    for index = 1, 30 do
+        local plot = workspace:FindFirstChild("plot" .. index, true)
+        if plot then
+            for _, object in ipairs(plot:GetDescendants()) do
+                if object:IsA("ObjectValue") and object.Value == player then return plot end
+                if object:IsA("StringValue") and object.Value == player.Name then return plot end
+            end
+            if plot:GetAttribute("Owner") == player.Name or plot:GetAttribute("OwnerUserId") == player.UserId then
+                return plot
+            end
+        end
+    end
+end
+
+teleportToOwnedPlot = function()
+    local plot = findOwnedPlot()
+    if plot then teleportToCFrame(plot:GetPivot()) end
+end
+
+local function teleportToNamedObject(names)
+    for _, name in ipairs(names) do
+        local object = workspace:FindFirstChild(name, true)
+        if object then
+            teleportToCFrame(object:IsA("BasePart") and object.CFrame or object:GetPivot())
+            return
+        end
+    end
+end
+
+local function sellHeldUma()
+    local net = getNetwork()
+    if net then
+        pcall(function() net:WaitForChild("ref_B_SellUma", 5):InvokeServer() end)
+    end
+end
+
+local PowerUpgradeAmount = 1
+
+local function applyMusic(assetId)
+    if not assetId or assetId == "" then return end
+    for _, object in ipairs(game:GetDescendants()) do
+        if object:IsA("Sound") then object.SoundId = assetId end
+    end
+end
+
 -- ============================================================
 -- ТАБЫ
 -- ============================================================
 local TABS = {
+{
+id = "home",
+name = "Home",
+funcs = {
+{ type = "stats" },
+}
+},
 {
 id = "player",
 name = "Player",
 funcs = {
 {
 title = "Jump",
-desc = "Повышенный прыжок",
+desc = "Сила прыжка 1-100",
+type = "slider",
 handlers = JumpHandlers
 },
 {
@@ -1354,32 +1574,69 @@ title = "Число",
 desc = "Ввод значения",
 type = "input"
 },
+{
+title = "Select Speed Upgrade Amount",
+desc = "Количество улучшений",
+type = "select",
+options = {1, 2, 3, 4, 5, 10},
+default = 1,
+onSelect = function(value) SpeedUpgradeAmount = value end,
+},
+{
+title = "Select Power Upgrade Amount",
+desc = "Количество улучшений",
+type = "select",
+options = {1, 2, 3, 4, 5, 10},
+default = 1,
+onSelect = function(value) PowerUpgradeAmount = value end,
+},
+{
+title = "Sell Uma",
+desc = "Продать уму в руках",
+type = "action",
+action = sellHeldUma,
+},
 }
 },
 
 {  
     id = "farm",  
-    name = "Farm",  
+    name = "Auto Features",  
     funcs = {  
         {  
-            title = "Kick Combo",  
+            title = "Auto Kick",  
             desc = "ТП в зону Kick, затем авто-удар",  
             handlers = KickHandlers  
         },  
         {  
-            title = "Daily Quest",  
+            title = "Auto Collect Quest",  
             desc = "Открыть и забрать ежедневный квест",  
             handlers = DailyQuestHandlers  
         },  
         {  
-            title = "Auto Collect",  
+            title = "Auto Collect Cash",  
             desc = "Сбор слотов 1-30 по кругу",  
             handlers = AutoCollectHandlers  
         },  
         {  
-            title = "Auto Upgrade",  
-            desc = "Повтор апгрейда (аргумент 8)",  
-            handlers = AutoUpgradeHandlers  
+            title = "Auto Training Weight",  
+            desc = "Автоматическая тренировка веса",  
+            handlers = AutoTrainingHandlers  
+        },
+        {
+            title = "Speed Upgrade",
+            desc = "Автоматическое улучшение скорости",
+            handlers = SpeedUpgradeHandlers
+        },
+        {
+            title = "Sell All Umas",
+            desc = "Продать всех ум",
+            handlers = SellAllHandlers
+        },
+        {
+            title = "Auto Offline Claim",
+            desc = "Забрать офлайн-награду",
+            handlers = OfflineClaimHandlers
         },  
     }  
 },  
@@ -1389,15 +1646,29 @@ type = "input"
     name = "Misc",  
     funcs = {  
         {  
-            title = "Функция 1",  
-            desc = "Заглушка функции Misc"  
-        },  
-        {  
-            title = "Функция 2",  
-            desc = "Заглушка функции Misc"  
+            title = "Set Music",
+            desc = "Заменить музыку",
+            type = "textInput",
+            placeholder = "rbxassetid://107406485711525",
+            onSave = applyMusic,
         },  
     }  
 },  
+
+{
+    id = "teleport",
+    name = "Teleport",
+    funcs = {
+        { title = "Teleport To Base", desc = "", type = "action", action = teleportToOwnedPlot },
+        { title = "Teleport to Sell", desc = "", type = "action", action = function()
+            teleportToNamedObject({"SellUma", "Seller", "Sell"})
+        end },
+        { title = "Teleport to Kick Station", desc = "", type = "action", action = teleportToKick },
+        { title = "Teleport to Shop", desc = "", type = "action", action = function()
+            teleportToNamedObject({"Shop", "ShopGuy", "Shop Guy"})
+        end },
+    },
+},
 
 {  
     id = "settings",  
@@ -2022,6 +2293,70 @@ if tab.id == "settings" then
         end  
     ).LayoutOrder = 2  
 
+elseif tab.id == "home" then
+    local player = Players.LocalPlayer
+    local stats = newFrame({
+        Size = UDim2.new(1, 0, 0, 210),
+        BackgroundColor3 = CONFIG.CardColor,
+    }, page)
+    corner(8, stats)
+    stroke(stats, CONFIG.AccentColor, 0.9, 1)
+    local avatar = Instance.new("ImageLabel")
+    avatar.Size = UDim2.fromOffset(64, 64)
+    avatar.Position = UDim2.fromOffset(18, 18)
+    avatar.BackgroundTransparency = 1
+    avatar.Parent = stats
+    corner(32, avatar)
+    task.spawn(function()
+        local ok, image = pcall(function()
+            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+        end)
+        if ok then avatar.Image = image end
+    end)
+    newLabel({
+        Text = player.DisplayName,
+        Position = UDim2.fromOffset(96, 22),
+        Size = UDim2.new(1, -112, 0, 24),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.GothamBold,
+        TextSize = 18,
+    }, stats)
+    local username = newLabel({
+        Text = "@" .. player.Name,
+        Position = UDim2.fromOffset(96, 48),
+        Size = UDim2.new(1, -112, 0, 18),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = CONFIG.MutedTextColor,
+        TextSize = 12,
+    }, stats)
+    local values = {}
+    for index, name in ipairs({"Cash", "Kick Power", "Speed", "Jump", "Rebirths"}) do
+        values[name] = newLabel({
+            Text = name .. ": -",
+            Position = UDim2.new(0, 18, 0, 92 + (index - 1) * 21),
+            Size = UDim2.new(1, -36, 0, 18),
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextSize = 12,
+        }, stats)
+    end
+    local function readValue(name)
+        local leaderstats = player:FindFirstChild("leaderstats")
+        local value = leaderstats and leaderstats:FindFirstChild(name)
+        return value and value.Value or player:GetAttribute(name) or "-"
+    end
+    local function updateStats()
+        for name, label in pairs(values) do
+            label.Text = name .. ": " .. tostring(readValue(name))
+        end
+    end
+    updateStats()
+    task.spawn(function()
+        while stats.Parent do
+            updateStats()
+            task.wait(1)
+        end
+    end)
+
 else  
 
     for fIndex, f in ipairs(  
@@ -2055,6 +2390,16 @@ else
                     key  
                 )  
 
+        elseif f.type == "textInput" then
+            card = createTextInputCard(page, f.title, f.desc, key, f.placeholder, f.onSave)
+        elseif f.type == "select" then
+            card = newFrame({
+                Size = UDim2.new(1, 0, 0, 44),
+                BackgroundTransparency = 1,
+            }, page)
+            createPercentRow(card, f.title, f.options, f.default, f.onSelect, "")
+        elseif f.type == "action" then
+            card = createActionCard(page, f.title, f.desc, key, f.action)
         else  
 
             card =  
