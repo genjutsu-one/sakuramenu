@@ -1022,10 +1022,35 @@ box.FocusLost:Connect(apply)
 local function httpGet(url)
     local fn = request or http_request or (syn and syn.request)
     if fn then
-        local response = fn({ Url = url, Method = "GET" })
-        return response and response.Body
+        local ok, response = pcall(fn, {
+            Url = url,
+            Method = "GET",
+            Headers = { ["Content-Type"] = "application/json" },
+        })
+        if not ok or type(response) ~= "table" then
+            return nil, tostring(response)
+        end
+        if response.StatusCode and response.StatusCode >= 400 then
+            return nil, "HTTP " .. tostring(response.StatusCode)
+        end
+        return response.Body, response.StatusCode
     end
-    return HttpService:GetAsync(url)
+
+    local ok, body = pcall(function()
+        return HttpService:GetAsync(url, false)
+    end)
+    if ok then return body, 200 end
+    return nil, tostring(body)
+end
+
+local function getMusicItems(body)
+    local ok, data = pcall(function()
+        return HttpService:JSONDecode(body)
+    end)
+    if not ok or type(data) ~= "table" then return nil end
+
+    local items = data.data or data.items
+    return type(items) == "table" and items or nil
 end
 
 local function searchMusic()
@@ -1035,26 +1060,49 @@ local function searchMusic()
     local keyword = searchBox.Text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
     if keyword == "" then return end
     local encoded = HttpService:UrlEncode(keyword)
-    local ok, body = pcall(httpGet, "https://catalog.roblox.com/v1/search/items/details?Category=3&Subcategory=3&SortType=0&Keyword=" .. encoded .. "&Limit=10")
-    if not ok or not body then return end
-    local parsedOk, data = pcall(HttpService.JSONDecode, HttpService, body)
-    if not parsedOk or type(data) ~= "table" then return end
-    for _, item in ipairs(data.data or {}) do
+    local urls = {
+        "https://catalog.roblox.com/v1/search/items/details?Category=Audio&Subcategory=Audio&SortType=Relevance&Keyword=" .. encoded .. "&Limit=10",
+        "https://catalog.roblox.com/v1/search/items/details?Category=3&Subcategory=3&SortType=0&Keyword=" .. encoded .. "&Limit=10",
+        "https://search.roblox.com/catalog/json?Keyword=" .. encoded .. "&Category=9&ResultsPerPage=10",
+    }
+
+    local items
+    local lastError = "нет ответа"
+    for _, url in ipairs(urls) do
+        local body, err = httpGet(url)
+        if body then
+            items = getMusicItems(body)
+            if items then break end
+            lastError = "неизвестный формат ответа"
+        else
+            lastError = err or lastError
+        end
+    end
+
+    if not items then
+        print("[Sakura] Music search failed: " .. tostring(lastError))
+        return
+    end
+
+    for _, item in ipairs(items) do
+        local itemId = item.id or item.assetId
+        if itemId then
         local result = Instance.new("TextButton")
         result.Size = UDim2.new(1, 0, 0, 24)
         result.BackgroundColor3 = CONFIG.BgColor
         result.TextColor3 = CONFIG.AccentColor
         result.TextXAlignment = Enum.TextXAlignment.Left
-        result.Text = "  " .. tostring(item.name or item.id)
+        result.Text = "  " .. tostring(item.name or itemId)
         result.Font = Enum.Font.GothamMedium
         result.TextSize = 11
         result.AutoButtonColor = true
         result.Parent = results
         corner(4, result)
         result.Activated:Connect(function()
-            box.Text = tostring(item.id)
+            box.Text = tostring(itemId)
             apply()
         end)
+        end
     end
 end
 
