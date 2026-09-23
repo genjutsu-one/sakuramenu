@@ -943,74 +943,152 @@ build = function(panel, saved)
 end
 
 -- ============================================================
--- MUSIC INPUT (текстовое поле без обрезки цифр, для rbxassetid://)
+-- MUSIC INPUT (без тумблера — просто поле и применение по Enter/уходу фокуса)
 -- ============================================================
 local function createMusicCard(parent, title, desc, key)
-return createCard(parent, title, desc, key, {
-expandedH = 96,
+local saved = SavedState.controls[key] or {}
 
-build = function(panel, saved)  
-        local box = Instance.new("TextBox")  
+local card = newFrame({
+Name = "MusicCard",
+Size = UDim2.new(1, 0, 0, 92),
+BackgroundColor3 = CONFIG.CardColor,
+}, parent)
+corner(8, card)
+stroke(card, CONFIG.AccentColor, 0.9, 1)
 
-        box.Name = "MusicId"  
-        box.Size = UDim2.new(1, 0, 0, 32)  
-        box.BackgroundColor3 = CONFIG.BgColor  
-        box.TextColor3 = CONFIG.AccentColor  
-        box.PlaceholderText = "rbxassetid://..."  
-        box.PlaceholderColor3 = CONFIG.MutedTextColor  
-        box.Font = Enum.Font.GothamMedium  
-        box.TextSize = 13  
-        box.ClearTextOnFocus = false  
-        box.Text = saved.text or ""  
-        box.Parent = panel  
+newLabel({  
+    Text = title,  
+    Position = UDim2.new(0, 14, 0, 6),  
+    Size = UDim2.new(1, -28, 0, 16),  
+    TextXAlignment = Enum.TextXAlignment.Left,  
+    Font = Enum.Font.GothamBold,  
+    TextSize = 13,  
+}, card)  
 
-        corner(6, box)  
-        stroke(box, CONFIG.AccentColor, 0.85, 1)  
+newLabel({  
+    Text = desc,  
+    Position = UDim2.new(0, 14, 0, 24),  
+    Size = UDim2.new(1, -28, 0, 16),  
+    TextXAlignment = Enum.TextXAlignment.Left,  
+    TextColor3 = CONFIG.MutedTextColor,  
+    TextSize = 11,  
+}, card)  
 
-        local hint = newLabel({  
-            Text = "Заменяет все играющие звуки",  
-            Position = UDim2.new(0, 0, 0, 36),  
-            Size = UDim2.new(1, 0, 0, 16),  
-            TextXAlignment = Enum.TextXAlignment.Left,  
-            TextColor3 = CONFIG.MutedTextColor,  
-            TextSize = 11,  
-        }, panel)  
+local box = Instance.new("TextBox")  
+box.Name = "MusicId"  
+box.Size = UDim2.new(1, -28, 0, 32)  
+box.Position = UDim2.new(0, 14, 0, 46)  
+box.BackgroundColor3 = CONFIG.BgColor  
+box.TextColor3 = CONFIG.AccentColor  
+box.PlaceholderText = "rbxassetid://... или просто цифры"  
+box.PlaceholderColor3 = CONFIG.MutedTextColor  
+box.Font = Enum.Font.GothamMedium  
+box.TextSize = 13  
+box.ClearTextOnFocus = false  
+box.Text = saved.text or ""  
+box.Parent = card  
+corner(6, box)  
+stroke(box, CONFIG.AccentColor, 0.85, 1)  
 
-        local function apply()  
-            local id = box.Text  
-            if id == "" then return end  
+local function apply()  
+    local id = box.Text  
+    if id == "" then return end  
 
-            if not string.find(id, "^rbxassetid://") then  
-                id = "rbxassetid://" .. string.gsub(id, "%D", "")  
-            end  
+    if not string.find(id, "^rbxassetid://") then  
+        id = "rbxassetid://" .. string.gsub(id, "%D", "")  
+    end  
+    box.Text = id  
 
-            saveField(key, "text", id)  
+    saveField(key, "text", id)  
 
-            local applied = 0  
-            for _, s in ipairs(game:GetService("SoundService"):GetDescendants()) do  
-                if s:IsA("Sound") and s.Playing then  
-                    s.SoundId = id  
-                    s:Play()  
-                    applied = applied + 1  
-                end  
-            end  
-
-            if applied == 0 then  
-                for _, s in ipairs(workspace:GetDescendants()) do  
-                    if s:IsA("Sound") and s.Playing then  
-                        s.SoundId = id  
-                        s:Play()  
-                        applied = applied + 1  
-                    end  
-                end  
-            end  
-
-            print(("[Sakura] Set Music: %s (заменено звуков: %d)"):format(id, applied))  
+    local applied = 0  
+    for _, s in ipairs(game:GetService("SoundService"):GetDescendants()) do  
+        if s:IsA("Sound") and s.Playing then  
+            s.SoundId = id  
+            s:Play()  
+            applied = applied + 1  
         end  
+    end  
 
-        box.FocusLost:Connect(apply)  
-    end,  
-})
+    if applied == 0 then  
+        for _, s in ipairs(workspace:GetDescendants()) do  
+            if s:IsA("Sound") and s.Playing then  
+                s.SoundId = id  
+                s:Play()  
+                applied = applied + 1  
+            end  
+        end  
+    end  
+
+    print(("[Sakura] Set Music: %s (заменено звуков: %d)"):format(id, applied))  
+end  
+
+box.FocusLost:Connect(apply)  
+
+return card
+
+end
+
+-- ============================================================
+-- AMOUNT INPUT (число + разовое применение по уходу фокуса, без тумблера)
+-- ============================================================
+local function createAmountCard(parent, title, desc, key, onApply)
+local saved = SavedState.controls[key] or {}
+
+local card = newFrame({
+Name = "AmountCard",
+Size = UDim2.new(1, 0, 0, 92),
+BackgroundColor3 = CONFIG.CardColor,
+}, parent)
+corner(8, card)
+stroke(card, CONFIG.AccentColor, 0.9, 1)
+
+newLabel({  
+    Text = title,  
+    Position = UDim2.new(0, 14, 0, 6),  
+    Size = UDim2.new(1, -28, 0, 16),  
+    TextXAlignment = Enum.TextXAlignment.Left,  
+    Font = Enum.Font.GothamBold,  
+    TextSize = 13,  
+}, card)  
+
+newLabel({  
+    Text = desc,  
+    Position = UDim2.new(0, 14, 0, 24),  
+    Size = UDim2.new(1, -28, 0, 16),  
+    TextXAlignment = Enum.TextXAlignment.Left,  
+    TextColor3 = CONFIG.MutedTextColor,  
+    TextSize = 11,  
+}, card)  
+
+local box = Instance.new("TextBox")  
+box.Name = "Amount"  
+box.Size = UDim2.new(1, -28, 0, 32)  
+box.Position = UDim2.new(0, 14, 0, 46)  
+box.BackgroundColor3 = CONFIG.BgColor  
+box.TextColor3 = CONFIG.AccentColor  
+box.PlaceholderText = "Введите число..."  
+box.PlaceholderColor3 = CONFIG.MutedTextColor  
+box.Font = Enum.Font.GothamMedium  
+box.TextSize = 13  
+box.ClearTextOnFocus = false  
+box.Text = saved.text or ""  
+box.Parent = card  
+corner(6, box)  
+stroke(box, CONFIG.AccentColor, 0.85, 1)  
+
+box.FocusLost:Connect(function()  
+    local cleaned = string.gsub(box.Text, "%D", "")  
+    box.Text = cleaned  
+    if cleaned == "" then return end  
+
+    saveField(key, "text", cleaned)  
+
+    local n = tonumber(cleaned)  
+    if n and onApply then onApply(n) end  
+end)  
+
+return card
 
 end
 
@@ -1556,6 +1634,206 @@ do
     }
 end
 
+local SLOT_POSITIONS = {
+    ["Plot1"] = {
+        Vector3.new(767.294, 3.163, 41.157),
+        Vector3.new(767.294, 3.163, 50.177),
+        Vector3.new(767.294, 3.163, 59.197),
+        Vector3.new(767.294, 3.163, 68.217),
+        Vector3.new(767.294, 3.163, 77.237),
+        Vector3.new(810.294, 3.163, 77.237),
+        Vector3.new(810.294, 3.163, 68.217),
+        Vector3.new(810.294, 3.163, 59.197),
+        Vector3.new(810.294, 3.163, 50.177),
+        Vector3.new(810.294, 3.163, 41.157),
+        Vector3.new(767.294, 20.737, 41.157),
+        Vector3.new(767.294, 20.737, 50.177),
+        Vector3.new(767.294, 20.737, 59.197),
+        Vector3.new(767.294, 20.737, 68.217),
+        Vector3.new(767.294, 20.737, 77.237),
+        Vector3.new(810.294, 20.737, 77.237),
+        Vector3.new(810.294, 20.737, 68.217),
+        Vector3.new(810.294, 20.737, 59.197),
+        Vector3.new(810.294, 20.737, 50.177),
+        Vector3.new(810.294, 20.737, 41.157),
+        Vector3.new(767.294, 41.737, 41.157),
+        Vector3.new(767.294, 41.737, 50.177),
+        Vector3.new(767.294, 41.737, 59.197),
+        Vector3.new(767.294, 41.737, 68.217),
+        Vector3.new(767.294, 41.737, 77.237),
+        Vector3.new(810.294, 41.737, 77.237),
+        Vector3.new(810.294, 41.737, 68.217),
+        Vector3.new(810.294, 41.737, 59.197),
+        Vector3.new(810.294, 41.737, 50.177),
+        Vector3.new(810.294, 41.737, 41.157),
+    },
+    ["Plot2"] = {
+        Vector3.new(963.254, 3.250, 308.352),
+        Vector3.new(955.442, 3.250, 303.842),
+        Vector3.new(947.630, 3.250, 299.332),
+        Vector3.new(939.819, 3.250, 294.822),
+        Vector3.new(932.008, 3.250, 290.312),
+        Vector3.new(910.508, 3.250, 327.551),
+        Vector3.new(918.319, 3.250, 332.061),
+        Vector3.new(926.130, 3.250, 336.571),
+        Vector3.new(933.942, 3.250, 341.081),
+        Vector3.new(941.754, 3.250, 345.591),
+        Vector3.new(963.254, 20.824, 308.352),
+        Vector3.new(955.442, 20.824, 303.842),
+        Vector3.new(947.630, 20.824, 299.332),
+        Vector3.new(939.819, 20.824, 294.822),
+        Vector3.new(932.008, 20.824, 290.312),
+        Vector3.new(910.508, 20.824, 327.551),
+        Vector3.new(918.319, 20.824, 332.061),
+        Vector3.new(926.130, 20.824, 336.571),
+        Vector3.new(933.942, 20.824, 341.081),
+        Vector3.new(941.754, 20.824, 345.591),
+        Vector3.new(963.254, 41.824, 308.352),
+        Vector3.new(955.442, 41.824, 303.842),
+        Vector3.new(947.630, 41.824, 299.332),
+        Vector3.new(939.819, 41.824, 294.822),
+        Vector3.new(932.008, 41.824, 290.312),
+        Vector3.new(910.508, 41.824, 327.551),
+        Vector3.new(918.319, 41.824, 332.061),
+        Vector3.new(926.130, 41.824, 336.571),
+        Vector3.new(933.942, 41.824, 341.081),
+        Vector3.new(941.754, 41.824, 345.591),
+    },
+    ["Plot3"] = {
+        Vector3.new(941.754, 3.250, 116.809),
+        Vector3.new(933.942, 3.250, 121.319),
+        Vector3.new(926.130, 3.250, 125.829),
+        Vector3.new(918.319, 3.250, 130.339),
+        Vector3.new(910.508, 3.250, 134.849),
+        Vector3.new(932.008, 3.250, 172.088),
+        Vector3.new(939.819, 3.250, 167.578),
+        Vector3.new(947.630, 3.250, 163.068),
+        Vector3.new(955.442, 3.250, 158.558),
+        Vector3.new(963.254, 3.250, 154.048),
+        Vector3.new(941.754, 20.824, 116.809),
+        Vector3.new(933.942, 20.824, 121.319),
+        Vector3.new(926.130, 20.824, 125.829),
+        Vector3.new(918.319, 20.824, 130.339),
+        Vector3.new(910.508, 20.824, 134.849),
+        Vector3.new(932.008, 20.824, 172.088),
+        Vector3.new(939.819, 20.824, 167.578),
+        Vector3.new(947.630, 20.824, 163.068),
+        Vector3.new(955.442, 20.824, 158.558),
+        Vector3.new(963.254, 20.824, 154.048),
+        Vector3.new(941.754, 41.824, 116.809),
+        Vector3.new(933.942, 41.824, 121.319),
+        Vector3.new(926.130, 41.824, 125.829),
+        Vector3.new(918.319, 41.824, 130.339),
+        Vector3.new(910.508, 41.824, 134.849),
+        Vector3.new(932.008, 41.824, 172.088),
+        Vector3.new(939.819, 41.824, 167.578),
+        Vector3.new(947.630, 41.824, 163.068),
+    },
+    ["Plot4"] = {
+        Vector3.new(906.381, 3.250, 384.037),
+        Vector3.new(901.208, 3.250, 376.648),
+        Vector3.new(896.034, 3.250, 369.259),
+        Vector3.new(890.860, 3.250, 361.870),
+        Vector3.new(885.687, 3.250, 354.482),
+        Vector3.new(850.463, 3.250, 379.146),
+        Vector3.new(855.637, 3.250, 386.534),
+        Vector3.new(860.810, 3.250, 393.923),
+        Vector3.new(865.984, 3.250, 401.312),
+        Vector3.new(871.158, 3.250, 408.700),
+        Vector3.new(906.381, 20.824, 384.037),
+        Vector3.new(901.208, 20.824, 376.648),
+        Vector3.new(896.034, 20.824, 369.259),
+        Vector3.new(890.860, 20.824, 361.870),
+        Vector3.new(885.687, 20.824, 354.482),
+        Vector3.new(850.463, 20.824, 379.146),
+        Vector3.new(855.637, 20.824, 386.534),
+        Vector3.new(860.810, 20.824, 393.923),
+        Vector3.new(865.984, 20.824, 401.312),
+        Vector3.new(871.158, 20.824, 408.700),
+        Vector3.new(906.381, 41.824, 384.037),
+        Vector3.new(901.208, 41.824, 376.648),
+        Vector3.new(896.034, 41.824, 369.259),
+        Vector3.new(890.860, 41.824, 361.870),
+        Vector3.new(885.687, 41.824, 354.482),
+        Vector3.new(850.463, 41.824, 379.146),
+        Vector3.new(855.637, 41.824, 386.534),
+        Vector3.new(860.810, 41.824, 393.923),
+        Vector3.new(865.984, 41.824, 401.312),
+        Vector3.new(871.158, 41.824, 408.700),
+    },
+    ["Plot5"] = {
+        Vector3.new(866.946, 4.300, 53.240),
+        Vector3.new(862.436, 4.300, 61.052),
+        Vector3.new(857.926, 4.300, 68.864),
+        Vector3.new(853.416, 4.300, 76.675),
+        Vector3.new(848.906, 4.300, 84.487),
+        Vector3.new(886.146, 4.300, 105.987),
+        Vector3.new(890.656, 4.300, 98.175),
+        Vector3.new(895.166, 4.300, 90.364),
+        Vector3.new(899.676, 4.300, 82.552),
+        Vector3.new(904.185, 4.300, 74.740),
+        Vector3.new(866.946, 21.874, 53.240),
+        Vector3.new(862.436, 21.874, 61.052),
+        Vector3.new(857.926, 21.874, 68.864),
+        Vector3.new(853.416, 21.874, 76.675),
+        Vector3.new(848.906, 21.874, 84.487),
+        Vector3.new(886.146, 21.874, 105.987),
+        Vector3.new(890.656, 21.874, 98.175),
+        Vector3.new(895.166, 21.874, 90.364),
+    },
+    ["Plot6"] = {
+        Vector3.new(975.337, 3.300, 209.700),
+        Vector3.new(966.317, 3.300, 209.700),
+        Vector3.new(957.297, 3.300, 209.700),
+        Vector3.new(948.277, 3.300, 209.700),
+        Vector3.new(939.257, 3.300, 209.700),
+        Vector3.new(939.257, 3.300, 252.700),
+        Vector3.new(948.277, 3.300, 252.700),
+        Vector3.new(957.297, 3.300, 252.700),
+        Vector3.new(966.317, 3.300, 252.700),
+        Vector3.new(975.337, 3.300, 252.700),
+    },
+    ["Plot7"] = {
+        Vector3.new(810.294, 4.300, 421.993),
+        Vector3.new(810.294, 4.300, 412.973),
+        Vector3.new(810.294, 4.300, 403.953),
+        Vector3.new(810.294, 4.300, 394.933),
+        Vector3.new(810.294, 4.300, 385.913),
+        Vector3.new(767.294, 4.300, 385.913),
+        Vector3.new(767.294, 4.300, 394.933),
+        Vector3.new(767.294, 4.300, 403.953),
+        Vector3.new(767.294, 4.300, 412.973),
+        Vector3.new(767.294, 4.300, 421.993),
+    },
+}
+
+local BASE_POSITIONS = {
+    ["Plot1"] = Vector3.new(788.794, 2.063, 59.200),
+    ["Plot2"] = Vector3.new(936.878, 2.150, 317.950),
+    ["Plot3"] = Vector3.new(936.878, 2.150, 144.450),
+    ["Plot4"] = Vector3.new(878.420, 2.150, 381.588),
+    ["Plot5"] = Vector3.new(876.544, 3.200, 79.616),
+    ["Plot6"] = Vector3.new(957.294, 2.200, 231.200),
+    ["Plot7"] = Vector3.new(788.794, 3.200, 403.950),
+}
+
+-- имя своего плота ("Plot1".."Plot7") через официальный клиентский сервис
+-- игры, а не через угадывание атрибутов — так надёжнее
+local function getOwnPlotName()
+    local ok, service = pcall(function()
+        return require(
+            game:GetService("ReplicatedStorage").Modules.ServicesLoader.ClientPlotService
+        )
+    end)
+    if ok and service then
+        if not service.Model and service.ModelAdded then
+            pcall(function() service.ModelAdded:Wait() end)
+        end
+        if service.Model then return service.Model.Name end
+    end
+    return nil
+end
+
 -- ============================================================
 -- ФЕРМА: DAILY QUEST / AUTO COLLECT / AUTO UPGRADE
 -- ============================================================
@@ -1607,46 +1885,36 @@ local DailyQuestHandlers = makeLoopToggle("Daily Quest", function()
     net:WaitForChild("rev_DailyQuests_Claim", 5):FireServer("Lifts")
 end, 30)
 
--- находит модель плота, у которой атрибут Owner совпадает с ником игрока
--- (та же логика, что в PlotOwners игры) — так не нужно хранить координаты
--- всех 30 плотов, плот игрока определяется на месте, какой бы он ни был
-local function getOwnPlot()
-    local plots = workspace:FindFirstChild("Plots")
-    if not plots then return nil end
-    local me = Players.LocalPlayer.Name
-    for _, model in ipairs(plots:GetChildren()) do
-        if model:GetAttribute("Owner") == me then
-            return model
-        end
-    end
-    return nil
-end
-
+-- определяет свой плот через ClientPlotService и телепортирует к его двери
+-- (координата из BASE_POSITIONS)
 local function teleportToOwnPlot()
-    local plot = getOwnPlot()
+    local name = getOwnPlotName()
+    local pos = name and BASE_POSITIONS[name]
     local char = Players.LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not (plot and root) then return false end
+    if not (pos and root) then return false end
 
-    local target = plot.PrimaryPart
-    if not target then
-        for _, d in ipairs(plot:GetDescendants()) do
-            if d:IsA("BasePart") then target = d break end
-        end
-    end
-    if not target then return false end
-
-    root.CFrame = target.CFrame + Vector3.new(0, 4, 0)
+    root.CFrame = CFrame.new(pos) + Vector3.new(0, 4, 0)
     return true
 end
 
 local AutoCollectHandlers = makeLoopToggle("Auto Collect Cash", function()
     local net = getNetwork()
     if not net then return end
-    teleportToOwnPlot()
-    task.wait(0.3)
+
+    local name = getOwnPlotName()
+    local slots = name and SLOT_POSITIONS[name]
+    local char = Players.LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not (slots and root) then
+        print("[Sakura] Auto Collect Cash: свой плот не определён")
+        return
+    end
+
     local ev = net:WaitForChild("rev_B_Collect", 5)
-    for i = 1, 30 do
+    for i, pos in ipairs(slots) do
+        root.CFrame = CFrame.new(pos) + Vector3.new(0, 2, 0)
+        task.wait(0.08)
         ev:FireServer(i)
         task.wait(0.05)
     end
@@ -1684,19 +1952,40 @@ local function getFirstInventoryTool()
     return char and char:FindFirstChildOfClass("Tool")
 end
 
-local AutoTrainingHandlers = makeLoopToggle("Auto Training Weight", function()
-    local net = getNetwork()
-    if not net then return end
+-- берёт первый предмет один раз при включении, дальше только жмёт тренировку
+local AutoTrainingHandlers
+do
+    local active, token = false, 0
+    AutoTrainingHandlers = {
+        onToggle = function(state)
+            active = state
+            token = token + 1
+            local id = token
+            if not state then return end
 
-    local tool = getFirstInventoryTool()
-    local hum = getHumanoid()
-    if tool and hum then
-        hum:EquipTool(tool)
-        task.wait(0.2)
-    end
+            task.spawn(function()
+                local net = getNetwork()
+                if not net then return end
 
-    net:WaitForChild("rev_TaviMishkal", 5):FireServer()
-end, 1)
+                local tool = getFirstInventoryTool()
+                local hum = getHumanoid()
+                if tool and hum then
+                    hum:EquipTool(tool)
+                    task.wait(0.2)
+                end
+
+                local ev = net:WaitForChild("rev_TaviMishkal", 5)
+                while active and token == id do
+                    local ok, err = pcall(function() ev:FireServer() end)
+                    if not ok then
+                        print("[Sakura] Auto Training Weight error: " .. tostring(err))
+                    end
+                    task.wait(1)
+                end
+            end)
+        end,
+    }
+end
 
 -- продаёт всех Um одним вызовом (InvokeServer, не FireServer)
 local SellAllHandlers = makeLoopToggle("Sell All Umas", function()
@@ -1818,24 +2107,32 @@ type = "input"
 },
 {
 title = "Select Speed Upgrade Amount",
-desc = "Количество для Speed Upgrade",
-type = "stepper",
-options = { 1, 5, 10, 25, 50, 100 },
-default = SpeedUpgradeAmount.value,
-onSelect = function(v)
+desc = "Ввести число — прокачает разово",
+type = "amount",
+onApply = function(v)
     SpeedUpgradeAmount.value = v
     saveField("upgrade_amounts", "speed", v)
+    local net = getNetwork()
+    if not net then return end
+    local ok, err = pcall(function()
+        net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(v)
+    end)
+    if not ok then print("[Sakura] Speed Upgrade Amount error: " .. tostring(err)) end
 end,
 },
 {
 title = "Select Power Upgrade Amount",
-desc = "Количество для Auto Upgrade",
-type = "stepper",
-options = { 1, 5, 8, 10, 25, 50, 100 },
-default = PowerUpgradeAmount.value,
-onSelect = function(v)
+desc = "Ввести число — прокачает разово",
+type = "amount",
+onApply = function(v)
     PowerUpgradeAmount.value = v
     saveField("upgrade_amounts", "power", v)
+    local net = getNetwork()
+    if not net then return end
+    local ok, err = pcall(function()
+        net:WaitForChild("rev_B_Upgrade", 5):FireServer(v)
+    end)
+    if not ok then print("[Sakura] Power Upgrade Amount error: " .. tostring(err)) end
 end,
 },
 {
@@ -2657,6 +2954,19 @@ elseif tab.id == "home" then
         return string.format("%.2f%s", n, units[i])
     end
 
+    local speedService
+    local function getSpeedLevel()
+        if speedService == nil then
+            local ok, svc = pcall(function()
+                return require(
+                    game:GetService("ReplicatedStorage").Modules.ServicesLoader.SpeedServiceClient
+                )
+            end)
+            speedService = ok and svc or false
+        end
+        return speedService and speedService.Level
+    end
+
     local function refreshStats()
         local lp = Players.LocalPlayer
         local ls = lp:FindFirstChild("leaderstats")
@@ -2667,8 +2977,8 @@ elseif tab.id == "home" then
         local kp = lp:GetAttribute("SelectedKickPower")
         statLabels["Kick Power"].Text = "Kick Power: " .. (kp and fmt(kp) or "—")
 
-        local hum = getHumanoid()
-        statLabels["Speed"].Text = "Speed: " .. (hum and tostring(math.floor(hum.WalkSpeed)) or "—")
+        local speedLvl = getSpeedLevel()
+        statLabels["Speed"].Text = "Speed: " .. (speedLvl and tostring(speedLvl) or "—")
 
         local reb = ls and ls:FindFirstChild("Rebirths")
         statLabels["Rebirths"].Text = "Rebirths: " .. (reb and tostring(reb.Value) or "—")
@@ -2723,6 +3033,10 @@ else
         elseif f.type == "stepper" then
 
             card = createNumberStepper(page, f.title, f.options, f.default, f.onSelect)
+
+        elseif f.type == "amount" then
+
+            card = createAmountCard(page, f.title, f.desc, key, f.onApply)
 
         else  
 
