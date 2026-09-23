@@ -231,46 +231,6 @@ if kind == "player" then
         BackgroundColor3 = W,  
     }, holder))  
 
-elseif kind == "home" then
-    local roof = newFrame({
-        Size = UDim2.fromOffset(size * 0.7, size * 0.45),
-        Position = UDim2.new(0.5, 0, 0.27, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Rotation = 45,
-        BackgroundColor3 = W,
-    }, holder)
-    corner(2, roof)
-    newFrame({
-        Size = UDim2.fromOffset(size * 0.62, size * 0.5),
-        Position = UDim2.new(0.5, 0, 0.65, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = W,
-    }, holder)
-    newFrame({
-        Size = UDim2.fromOffset(size * 0.16, size * 0.28),
-        Position = UDim2.new(0.5, 0, 0.72, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = CONFIG.BgColor,
-    }, holder)
-
-elseif kind == "teleport" then
-    local arrow = newFrame({
-        Size = UDim2.fromOffset(size * 0.58, size * 0.16),
-        Position = UDim2.new(0.35, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = W,
-    }, holder)
-    corner(2, arrow)
-    for _, rotation in ipairs({45, -45}) do
-        corner(2, newFrame({
-            Size = UDim2.fromOffset(size * 0.38, size * 0.16),
-            Position = UDim2.new(0.7, 0, 0.5, rotation == 45 and -size * 0.12 or size * 0.12),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Rotation = rotation,
-            BackgroundColor3 = W,
-        }, holder))
-    end
-
 elseif kind == "farm" then  
 
     corner(size, newFrame({  
@@ -359,6 +319,73 @@ elseif kind == "settings" then
         ZIndex = 2,  
     }, holder))  
 
+elseif kind == "home" then  
+
+    corner(3, newFrame({  
+        Size = UDim2.fromOffset(size * 0.62, size * 0.62),  
+        Position = UDim2.new(0.5, 0, 0.55, 0),  
+        AnchorPoint = Vector2.new(0.5, 0.5),  
+        Rotation = 45,  
+        BackgroundColor3 = W,  
+    }, holder))  
+
+    corner(size, newFrame({  
+        Size = UDim2.fromOffset(size * 0.72, size * 0.72),  
+        Position = UDim2.new(0.5, 0, 0.7, 0),  
+        AnchorPoint = Vector2.new(0.5, 1),  
+        BackgroundColor3 = CONFIG.BgColor,  
+        ZIndex = 2,  
+    }, holder))  
+
+    corner(4, newFrame({  
+        Size = UDim2.fromOffset(size * 0.42, size * 0.42),  
+        Position = UDim2.new(0.5, 0, 0.3, 0),  
+        AnchorPoint = Vector2.new(0.5, 0.5),  
+        Rotation = 45,  
+        BackgroundColor3 = W,  
+        ZIndex = 3,  
+    }, holder))  
+
+    corner(2, newFrame({  
+        Size = UDim2.fromOffset(size * 0.5, size * 0.42),  
+        Position = UDim2.new(0.5, 0, 0.78, 0),  
+        AnchorPoint = Vector2.new(0.5, 1),  
+        BackgroundColor3 = W,  
+    }, holder))  
+
+    corner(2, newFrame({  
+        Size = UDim2.fromOffset(size * 0.16, size * 0.24),  
+        Position = UDim2.new(0.5, 0, 1, 0),  
+        AnchorPoint = Vector2.new(0.5, 1),  
+        BackgroundColor3 = CONFIG.BgColor,  
+        ZIndex = 2,  
+    }, holder))  
+
+elseif kind == "teleport" then  
+
+    corner(size, newFrame({  
+        Size = UDim2.fromOffset(size * 0.6, size * 0.6),  
+        Position = UDim2.new(0.5, 0, 0.36, 0),  
+        AnchorPoint = Vector2.new(0.5, 0.5),  
+        BackgroundColor3 = W,  
+    }, holder))  
+
+    corner(3, newFrame({  
+        Size = UDim2.fromOffset(size * 0.34, size * 0.34),  
+        Position = UDim2.new(0.5, 0, 0.62, 0),  
+        AnchorPoint = Vector2.new(0.5, 0.5),  
+        Rotation = 45,  
+        BackgroundColor3 = W,  
+    }, holder))  
+
+    corner(size, newFrame({  
+        Size = UDim2.fromOffset(size * 0.24, size * 0.24),  
+        Position = UDim2.new(0.5, 0, 0.36, 0),  
+        AnchorPoint = Vector2.new(0.5, 0.5),  
+        BackgroundColor3 = CONFIG.BgColor,  
+        ZIndex = 2,  
+    }, holder))  
+
 elseif kind == "collapse" then  
 
     corner(2, newFrame({  
@@ -440,6 +467,28 @@ end
 
 return holder
 
+end
+
+local function drawChevronRight(parent, size, color)
+local holder = iconHolder(parent, size)
+
+corner(size, newFrame({  
+    Size = UDim2.fromOffset(size * 0.55, size * 0.16),  
+    Position = UDim2.new(0.5, 0, 0.5, -size * 0.18),  
+    AnchorPoint = Vector2.new(0.5, 0.5),  
+    Rotation = 45,  
+    BackgroundColor3 = color,  
+}, holder))  
+
+corner(size, newFrame({  
+    Size = UDim2.fromOffset(size * 0.55, size * 0.16),  
+    Position = UDim2.new(0.5, 0, 0.5, size * 0.18),  
+    AnchorPoint = Vector2.new(0.5, 0.5),  
+    Rotation = -45,  
+    BackgroundColor3 = color,  
+}, holder))  
+
+return holder
 end
 
 -- ============================================================
@@ -636,46 +685,51 @@ if handlers and handlers.onToggle then
 
 end
 
-local function createActionCard(parent, title, desc, key, action)
-    local card = newFrame({
-        Name = "ActionCard",
-        Size = UDim2.new(1, 0, 0, CARD_H),
-        BackgroundColor3 = CONFIG.CardColor,
-    }, parent)
-    corner(8, card)
-    stroke(card, CONFIG.AccentColor, 0.9, 1)
-    newLabel({
-        Text = title,
-        Position = UDim2.new(0, 14, 0, 6),
-        Size = UDim2.new(1, -72, 0, 16),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Font = Enum.Font.GothamBold,
-        TextSize = 13,
-    }, card)
-    newLabel({
-        Text = desc,
-        Position = UDim2.new(0, 14, 0, 24),
-        Size = UDim2.new(1, -72, 0, 16),
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextColor3 = CONFIG.MutedTextColor,
-        TextSize = 11,
-    }, card)
-    newLabel({
-        Text = ">",
-        Position = UDim2.new(1, -42, 0, 0),
-        Size = UDim2.fromOffset(28, CARD_H),
-        TextXAlignment = Enum.TextXAlignment.Center,
-        Font = Enum.Font.GothamBold,
-        TextSize = 22,
-    }, card)
-    local hit = newButton({
-        Size = UDim2.fromScale(1, 1),
-        ZIndex = 5,
-    }, card)
-    hit.MouseButton1Click:Connect(function()
-        if action then action() end
-    end)
-    return card
+-- ============================================================
+-- ACTION CARD (плашка-кнопка со стрелочкой, без тумблера)
+-- ============================================================
+local function createActionCard(parent, title, desc, onClick)
+local card = newFrame({
+Name = "ActionCard",
+Size = UDim2.new(1, 0, 0, CARD_H),
+BackgroundColor3 = CONFIG.CardColor,
+}, parent)
+corner(8, card)
+stroke(card, CONFIG.AccentColor, 0.9, 1)
+
+newLabel({  
+    Text = title,  
+    Position = UDim2.new(0, 14, 0, 6),  
+    Size = UDim2.new(1, -48, 0, 16),  
+    TextXAlignment = Enum.TextXAlignment.Left,  
+    Font = Enum.Font.GothamBold,  
+    TextSize = 13,  
+}, card)  
+
+newLabel({  
+    Text = desc,  
+    Position = UDim2.new(0, 14, 0, 24),  
+    Size = UDim2.new(1, -48, 0, 16),  
+    TextXAlignment = Enum.TextXAlignment.Left,  
+    TextColor3 = CONFIG.MutedTextColor,  
+    TextSize = 11,  
+}, card)  
+
+local chevronHold = newFrame({  
+    Size = UDim2.fromOffset(18, 18),  
+    Position = UDim2.new(1, -14, 0.5, 0),  
+    AnchorPoint = Vector2.new(1, 0.5),  
+    BackgroundTransparency = 1,  
+}, card)  
+drawChevronRight(chevronHold, 14, CONFIG.MutedTextColor)  
+
+local hit = newButton({ Size = UDim2.fromScale(1, 1), ZIndex = 5 }, card)  
+hit.MouseButton1Click:Connect(function()  
+    if onClick then onClick() end  
+end)  
+
+return card
+
 end
 
 -- ============================================================
@@ -888,38 +942,82 @@ build = function(panel, saved)
 
 end
 
-local function createTextInputCard(parent, title, desc, key, placeholder, onSave)
-    return createCard(parent, title, desc, key, {
-        expandedH = 88,
-        build = function(panel, saved)
-            local box = Instance.new("TextBox")
-            box.Name = "Input"
-            box.Size = UDim2.fromOffset(180, 30)
-            box.Position = UDim2.new(1, 0, 0, 0)
-            box.AnchorPoint = Vector2.new(1, 0)
-            box.BackgroundColor3 = CONFIG.BgColor
-            box.TextColor3 = CONFIG.AccentColor
-            box.PlaceholderText = placeholder or ""
-            box.PlaceholderColor3 = CONFIG.MutedTextColor
-            box.Font = Enum.Font.GothamMedium
-            box.TextSize = 12
-            box.ClearTextOnFocus = false
-            box.Text = saved.text or ""
-            box.Parent = panel
-            corner(6, box)
-            stroke(box, CONFIG.AccentColor, 0.85, 1)
-            box.FocusLost:Connect(function()
-                saveField(key, "text", box.Text)
-                if onSave then onSave(box.Text) end
-            end)
-        end,
-    })
+-- ============================================================
+-- MUSIC INPUT (текстовое поле без обрезки цифр, для rbxassetid://)
+-- ============================================================
+local function createMusicCard(parent, title, desc, key)
+return createCard(parent, title, desc, key, {
+expandedH = 96,
+
+build = function(panel, saved)  
+        local box = Instance.new("TextBox")  
+
+        box.Name = "MusicId"  
+        box.Size = UDim2.new(1, 0, 0, 32)  
+        box.BackgroundColor3 = CONFIG.BgColor  
+        box.TextColor3 = CONFIG.AccentColor  
+        box.PlaceholderText = "rbxassetid://..."  
+        box.PlaceholderColor3 = CONFIG.MutedTextColor  
+        box.Font = Enum.Font.GothamMedium  
+        box.TextSize = 13  
+        box.ClearTextOnFocus = false  
+        box.Text = saved.text or ""  
+        box.Parent = panel  
+
+        corner(6, box)  
+        stroke(box, CONFIG.AccentColor, 0.85, 1)  
+
+        local hint = newLabel({  
+            Text = "Заменяет все играющие звуки",  
+            Position = UDim2.new(0, 0, 0, 36),  
+            Size = UDim2.new(1, 0, 0, 16),  
+            TextXAlignment = Enum.TextXAlignment.Left,  
+            TextColor3 = CONFIG.MutedTextColor,  
+            TextSize = 11,  
+        }, panel)  
+
+        local function apply()  
+            local id = box.Text  
+            if id == "" then return end  
+
+            if not string.find(id, "^rbxassetid://") then  
+                id = "rbxassetid://" .. string.gsub(id, "%D", "")  
+            end  
+
+            saveField(key, "text", id)  
+
+            local applied = 0  
+            for _, s in ipairs(game:GetService("SoundService"):GetDescendants()) do  
+                if s:IsA("Sound") and s.Playing then  
+                    s.SoundId = id  
+                    s:Play()  
+                    applied = applied + 1  
+                end  
+            end  
+
+            if applied == 0 then  
+                for _, s in ipairs(workspace:GetDescendants()) do  
+                    if s:IsA("Sound") and s.Playing then  
+                        s.SoundId = id  
+                        s:Play()  
+                        applied = applied + 1  
+                    end  
+                end  
+            end  
+
+            print(("[Sakura] Set Music: %s (заменено звуков: %d)"):format(id, applied))  
+        end  
+
+        box.FocusLost:Connect(apply)  
+    end,  
+})
+
 end
 
 -- ============================================================
 -- STEPPER
 -- ============================================================
-local function createPercentRow(parent, title, options, default, onSelect, suffix)
+local function createPercentRow(parent, title, options, default, onSelect)
 local row = newFrame({
 Name = "StepperRow",
 Size = UDim2.new(1, 0, 0, 44),
@@ -975,7 +1073,7 @@ end
 local btnMinus = stepButton(0, "-")  
 
 local valueLabel = newLabel({  
-    Text = options[index] .. (suffix or "%"),  
+    Text = options[index] .. "%",  
     Position = UDim2.new(0, 30, 0, 0),  
     Size = UDim2.fromOffset(52, 26),  
     Font = Enum.Font.GothamBold,  
@@ -986,7 +1084,7 @@ local valueLabel = newLabel({
 local btnPlus = stepButton(86, "+")  
 
 local function apply()  
-    valueLabel.Text = options[index] .. (suffix or "%")  
+    valueLabel.Text = options[index] .. "%"  
 
     if onSelect then  
         onSelect(options[index])  
@@ -1005,6 +1103,86 @@ btnPlus.MouseButton1Click:Connect(function()
         index += 1  
         apply()  
     end  
+end)  
+
+return row
+
+end
+
+-- то же самое, но без знака "%" и с произвольным набором значений —
+-- для выбора количества (сумма апгрейда и т.п.)
+local function createNumberStepper(parent, title, options, default, onSelect)
+local row = newFrame({
+Name = "NumberStepperRow",
+Size = UDim2.new(1, 0, 0, 44),
+BackgroundColor3 = CONFIG.CardColor,
+}, parent)
+
+corner(8, row)  
+stroke(row, CONFIG.AccentColor, 0.9, 1)  
+
+newLabel({  
+    Text = title,  
+    Position = UDim2.new(0, 14, 0, 0),  
+    Size = UDim2.new(1, -134, 1, 0),  
+    TextXAlignment = Enum.TextXAlignment.Left,  
+    Font = Enum.Font.GothamBold,  
+    TextSize = 13,  
+}, row)  
+
+local index = 1  
+
+for i, v in ipairs(options) do  
+    if v == default then index = i end  
+end  
+
+local stepper = newFrame({  
+    Size = UDim2.fromOffset(112, 26),  
+    Position = UDim2.new(1, -12, 0.5, 0),  
+    AnchorPoint = Vector2.new(1, 0.5),  
+    BackgroundTransparency = 1,  
+}, row)  
+
+local function stepButton(x, text)  
+    local b = newButton({  
+        Size = UDim2.fromOffset(26, 26),  
+        Position = UDim2.new(0, x, 0, 0),  
+        BackgroundColor3 = CONFIG.OffColor,  
+    }, stepper)  
+    corner(6, b)  
+    newLabel({  
+        Text = text,  
+        Size = UDim2.fromScale(1, 1),  
+        Font = Enum.Font.GothamBold,  
+        TextSize = 16,  
+    }, b)  
+    return b  
+end  
+
+local btnMinus = stepButton(0, "-")  
+
+local valueLabel = newLabel({  
+    Text = tostring(options[index]),  
+    Position = UDim2.new(0, 30, 0, 0),  
+    Size = UDim2.fromOffset(52, 26),  
+    Font = Enum.Font.GothamBold,  
+    TextSize = 13,  
+    TextXAlignment = Enum.TextXAlignment.Center,  
+}, stepper)  
+
+local btnPlus = stepButton(86, "+")  
+
+local function apply()  
+    valueLabel.Text = tostring(options[index])  
+    if onSelect then onSelect(options[index]) end  
+end  
+
+btnMinus.MouseButton1Click:Connect(function()  
+    if index > 1 then index = index - 1 apply() end  
+end)  
+
+btnPlus.MouseButton1Click:Connect(function()  
+    if index < #options then index = index + 1 apply() end  
 end)  
 
 return row
@@ -1123,8 +1301,10 @@ end,
 }
 
 -- ============================================================
--- JUMP
+-- JUMP (слайдер 1-100, как Speed)
 -- ============================================================
+local JUMP_SCALE = 2 -- слайдер 1-100 даёт JumpPower до 200
+
 local savedJump = SavedState.controls["player_1"] or {}
 local Jump = {
     enabled = savedJump.on or false,
@@ -1132,20 +1312,22 @@ local Jump = {
     original = 50,
 }
 
-local function applyJump()
+bind(RunService.Heartbeat, function()
+    if not Jump.enabled then return end
     local hum = getHumanoid()
     if not hum then return end
     hum.UseJumpPower = true
-    hum.JumpPower = Jump.enabled and Jump.value * 2 or Jump.original
-end
-
-bind(RunService.Heartbeat, applyJump)
+    local target = Jump.value * JUMP_SCALE
+    if hum.JumpPower ~= target then
+        hum.JumpPower = target
+    end
+end)
 
 local JumpHandlers = {
-    onChange = function(value)
-        Jump.value = value
-        applyJump()
+    onChange = function(v)
+        Jump.value = v
     end,
+
     onToggle = function(state)
         local hum = getHumanoid()
         if state then
@@ -1153,8 +1335,11 @@ local JumpHandlers = {
             Jump.enabled = true
         else
             Jump.enabled = false
+            if hum then
+                hum.UseJumpPower = true
+                hum.JumpPower = Jump.original
+            end
         end
-        applyJump()
     end,
 }
 
@@ -1414,7 +1599,7 @@ end
 -- открывает и пытается забрать ежедневный квест. Известен только один
 -- вариант награды ("Lifts") — если квестов несколько разных, пришли их
 -- названия, добавлю перебор по списку
-local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
+local DailyQuestHandlers = makeLoopToggle("Daily Quest", function()
     local net = getNetwork()
     if not net then return end
     net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
@@ -1422,118 +1607,176 @@ local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
     net:WaitForChild("rev_DailyQuests_Claim", 5):FireServer("Lifts")
 end, 30)
 
--- перебирает слоты сбора 1-30
-local findOwnedPlot
-local teleportToOwnedPlot
+-- находит модель плота, у которой атрибут Owner совпадает с ником игрока
+-- (та же логика, что в PlotOwners игры) — так не нужно хранить координаты
+-- всех 30 плотов, плот игрока определяется на месте, какой бы он ни был
+local function getOwnPlot()
+    local plots = workspace:FindFirstChild("Plots")
+    if not plots then return nil end
+    local me = Players.LocalPlayer.Name
+    for _, model in ipairs(plots:GetChildren()) do
+        if model:GetAttribute("Owner") == me then
+            return model
+        end
+    end
+    return nil
+end
+
+local function teleportToOwnPlot()
+    local plot = getOwnPlot()
+    local char = Players.LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not (plot and root) then return false end
+
+    local target = plot.PrimaryPart
+    if not target then
+        for _, d in ipairs(plot:GetDescendants()) do
+            if d:IsA("BasePart") then target = d break end
+        end
+    end
+    if not target then return false end
+
+    root.CFrame = target.CFrame + Vector3.new(0, 4, 0)
+    return true
+end
 
 local AutoCollectHandlers = makeLoopToggle("Auto Collect Cash", function()
     local net = getNetwork()
     if not net then return end
-    teleportToOwnedPlot()
-    task.wait(0.2)
+    teleportToOwnPlot()
+    task.wait(0.3)
     local ev = net:WaitForChild("rev_B_Collect", 5)
-    local plot = findOwnedPlot()
-    local plotName = plot and string.match(plot.Name, "%d+")
-    if plotName then ev:FireServer(tonumber(plotName)) end
+    for i = 1, 30 do
+        ev:FireServer(i)
+        task.wait(0.05)
+    end
 end, 3)
 
--- повторяет апгрейд с аргументом 8 (тем же, что был в примере)
+-- количество, с которым шлются апгрейды — крутится степперами в Player
+-- ("Select Speed Upgrade Amount" / "Select Power Upgrade Amount")
+local savedAmounts = SavedState.controls["upgrade_amounts"] or {}
+local SpeedUpgradeAmount = { value = savedAmounts.speed or 1 }
+local PowerUpgradeAmount = { value = savedAmounts.power or 8 }
+
+-- повторяет апгрейд Umas с выбранным количеством (по умолчанию 8, как в примере)
 local AutoUpgradeHandlers = makeLoopToggle("Auto Upgrade", function()
     local net = getNetwork()
     if not net then return end
-    net:WaitForChild("rev_B_Upgrade", 5):FireServer(8)
+    net:WaitForChild("rev_B_Upgrade", 5):FireServer(PowerUpgradeAmount.value)
 end, 1)
 
-local AutoTrainingHandlers = makeLoopToggle("Auto Training Weight", function()
-    local player = Players.LocalPlayer
-    local inventory = player:FindFirstChild("Inventory") or player:FindFirstChild("Backpack")
-    local firstItem = inventory and inventory:GetChildren()[1]
-    if firstItem and player.Character then
-        firstItem.Parent = player.Character
-    end
-    local net = getNetwork()
-    if net then net:WaitForChild("rev_TaviMishkal", 5):FireServer() end
-    Players.LocalPlayer:WaitForChild("ClientLoader")
-end, 1)
-
-local SpeedUpgradeAmount = 1
-
+-- повторяет апгрейд скорости с выбранным количеством (по умолчанию 1, как в примере)
 local SpeedUpgradeHandlers = makeLoopToggle("Speed Upgrade", function()
     local net = getNetwork()
-    if net then net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(SpeedUpgradeAmount) end
-    Players.LocalPlayer:WaitForChild("ClientLoader")
+    if not net then return end
+    net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(SpeedUpgradeAmount.value)
 end, 1)
 
+-- берёт первый предмет инвентаря (Tool в Backpack) и жмёт тренировку веса
+local function getFirstInventoryTool()
+    local lp = Players.LocalPlayer
+    local backpack = lp:FindFirstChild("Backpack")
+    if backpack then
+        local tool = backpack:FindFirstChildOfClass("Tool")
+        if tool then return tool end
+    end
+    local char = lp.Character
+    return char and char:FindFirstChildOfClass("Tool")
+end
+
+local AutoTrainingHandlers = makeLoopToggle("Auto Training Weight", function()
+    local net = getNetwork()
+    if not net then return end
+
+    local tool = getFirstInventoryTool()
+    local hum = getHumanoid()
+    if tool and hum then
+        hum:EquipTool(tool)
+        task.wait(0.2)
+    end
+
+    net:WaitForChild("rev_TaviMishkal", 5):FireServer()
+end, 1)
+
+-- продаёт всех Um одним вызовом (InvokeServer, не FireServer)
 local SellAllHandlers = makeLoopToggle("Sell All Umas", function()
     local net = getNetwork()
-    if net then net:WaitForChild("ref_B_SellAll", 5):InvokeServer() end
-    local prompt = workspace:WaitForChild("NPCs", 5)
-        :WaitForChild("SellUma", 5)
-        :WaitForChild("ProximityPart", 5)
-        :WaitForChild("ProximityPrompt", 5)
-        :WaitForChild("Script", 5)
-end, 2)
-
-local OfflineClaimHandlers = makeLoopToggle("Auto Offline Claim", function()
-    local net = getNetwork()
-    if net then net:WaitForChild("rev_Offline_Claim", 5):FireServer() end
-    Players.LocalPlayer:WaitForChild("ClientLoader")
+    if not net then return end
+    net:WaitForChild("ref_B_SellAll", 5):InvokeServer()
 end, 5)
 
-local function getPlayerRoot()
-    local char = Players.LocalPlayer.Character
-    return char and char:FindFirstChild("HumanoidRootPart")
-end
+-- забирает офлайн-накопление
+local AutoOfflineClaimHandlers = makeLoopToggle("Auto Offline Claim", function()
+    local net = getNetwork()
+    if not net then return end
+    net:WaitForChild("rev_Offline_Claim", 5):FireServer()
+end, 60)
 
-local function teleportToCFrame(cframe)
-    local root = getPlayerRoot()
-    if root then root.CFrame = cframe + Vector3.new(0, 3, 0) end
-end
-
-findOwnedPlot = function()
-    local player = Players.LocalPlayer
-    for index = 1, 30 do
-        local plot = workspace:FindFirstChild("plot" .. index, true)
-        if plot then
-            for _, object in ipairs(plot:GetDescendants()) do
-                if object:IsA("ObjectValue") and object.Value == player then return plot end
-                if object:IsA("StringValue") and object.Value == player.Name then return plot end
-            end
-            if plot:GetAttribute("Owner") == player.Name or plot:GetAttribute("OwnerUserId") == player.UserId then
-                return plot
-            end
-        end
-    end
-end
-
-teleportToOwnedPlot = function()
-    local plot = findOwnedPlot()
-    if plot then teleportToCFrame(plot:GetPivot()) end
-end
-
-local function teleportToNamedObject(names)
-    for _, name in ipairs(names) do
-        local object = workspace:FindFirstChild(name, true)
-        if object then
-            teleportToCFrame(object:IsA("BasePart") and object.CFrame or object:GetPivot())
-            return
-        end
-    end
-end
-
+-- продаёт Uma, которую держит игрок. Точное имя ремоута для ОДИНОЧНОЙ
+-- продажи мне не присылали (только ref_B_SellAll для продажи всех) —
+-- это предположение по аналогии, проверь в игре и пришли точный вызов,
+-- если не сработает
 local function sellHeldUma()
     local net = getNetwork()
-    if net then
-        pcall(function() net:WaitForChild("ref_B_SellUma", 5):InvokeServer() end)
+    if not net then return end
+    local char = Players.LocalPlayer.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+
+    local ok, err = pcall(function()
+        local ev = net:FindFirstChild("rev_B_Sell") or net:FindFirstChild("ref_B_Sell")
+        if not ev then error("remote rev_B_Sell / ref_B_Sell не найден") end
+        if ev:IsA("RemoteFunction") then
+            ev:InvokeServer(tool and tool.Name)
+        else
+            ev:FireServer(tool and tool.Name)
+        end
+    end)
+    if not ok then
+        print("[Sakura] Sell Uma: " .. tostring(err))
     end
 end
 
-local PowerUpgradeAmount = 1
+-- ============================================================
+-- ТЕЛЕПОРТЫ (для вкладки Teleport)
+-- ============================================================
+-- ищет инстанс по цепочке имён-кандидатов (первый найденный вариант)
+local function findFirst(root, ...)
+    local names = { ... }
+    local cur = root
+    for _, name in ipairs(names) do
+        cur = cur and cur:FindFirstChild(name)
+    end
+    return cur
+end
 
-local function applyMusic(assetId)
-    if not assetId or assetId == "" then return end
-    for _, object in ipairs(game:GetDescendants()) do
-        if object:IsA("Sound") then object.SoundId = assetId end
+local function teleportRootTo(part, yOffset)
+    local char = Players.LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not (part and root) then return false end
+    root.CFrame = part.CFrame + Vector3.new(0, yOffset or 4, 0)
+    return true
+end
+
+local function teleportToSell()
+    local part = findFirst(workspace, "NPCs", "SellUma", "ProximityPart")
+        or findFirst(workspace, "NPCs", "SellUma")
+    if part and not part:IsA("BasePart") then
+        part = part:FindFirstChildWhichIsA("BasePart")
+    end
+    if not teleportRootTo(part) then
+        print("[Sakura] Teleport to Sell: NPC не найден (workspace.NPCs.SellUma)")
+    end
+end
+
+local function teleportToShop()
+    local part = findFirst(workspace, "NPCs", "Shop Guy")
+        or findFirst(workspace, "NPCs", "ShopGuy")
+        or findFirst(workspace, "NPCs", "Shop")
+    if part and not part:IsA("BasePart") then
+        part = part.PrimaryPart or part:FindFirstChildWhichIsA("BasePart")
+    end
+    if not teleportRootTo(part) then
+        print("[Sakura] Teleport to Shop: NPC не найден — пришли точный путь, если не сработает")
     end
 end
 
@@ -1544,10 +1787,9 @@ local TABS = {
 {
 id = "home",
 name = "Home",
-funcs = {
-{ type = "stats" },
-}
+funcs = {}
 },
+
 {
 id = "player",
 name = "Player",
@@ -1576,25 +1818,31 @@ type = "input"
 },
 {
 title = "Select Speed Upgrade Amount",
-desc = "Количество улучшений",
-type = "select",
-options = {1, 2, 3, 4, 5, 10},
-default = 1,
-onSelect = function(value) SpeedUpgradeAmount = value end,
+desc = "Количество для Speed Upgrade",
+type = "stepper",
+options = { 1, 5, 10, 25, 50, 100 },
+default = SpeedUpgradeAmount.value,
+onSelect = function(v)
+    SpeedUpgradeAmount.value = v
+    saveField("upgrade_amounts", "speed", v)
+end,
 },
 {
 title = "Select Power Upgrade Amount",
-desc = "Количество улучшений",
-type = "select",
-options = {1, 2, 3, 4, 5, 10},
-default = 1,
-onSelect = function(value) PowerUpgradeAmount = value end,
+desc = "Количество для Auto Upgrade",
+type = "stepper",
+options = { 1, 5, 8, 10, 25, 50, 100 },
+default = PowerUpgradeAmount.value,
+onSelect = function(v)
+    PowerUpgradeAmount.value = v
+    saveField("upgrade_amounts", "power", v)
+end,
 },
 {
 title = "Sell Uma",
-desc = "Продать уму в руках",
+desc = "Продать Uma в руках (проверь вызов)",
 type = "action",
-action = sellHeldUma,
+onClick = sellHeldUma,
 },
 }
 },
@@ -1619,25 +1867,30 @@ action = sellHeldUma,
             handlers = AutoCollectHandlers  
         },  
         {  
-            title = "Auto Training Weight",  
-            desc = "Автоматическая тренировка веса",  
-            handlers = AutoTrainingHandlers  
-        },
+            title = "Auto Upgrade",  
+            desc = "Повтор апгрейда Umas",  
+            handlers = AutoUpgradeHandlers  
+        },  
         {
             title = "Speed Upgrade",
-            desc = "Автоматическое улучшение скорости",
+            desc = "Повтор апгрейда скорости",
             handlers = SpeedUpgradeHandlers
         },
         {
+            title = "Auto Training Weight",
+            desc = "Первый предмет инвентаря + тренировка",
+            handlers = AutoTrainingHandlers
+        },
+        {
             title = "Sell All Umas",
-            desc = "Продать всех ум",
+            desc = "Продать всех Umas",
             handlers = SellAllHandlers
         },
         {
             title = "Auto Offline Claim",
-            desc = "Забрать офлайн-награду",
-            handlers = OfflineClaimHandlers
-        },  
+            desc = "Забрать офлайн-накопление",
+            handlers = AutoOfflineClaimHandlers
+        },
     }  
 },  
 
@@ -1645,12 +1898,14 @@ action = sellHeldUma,
     id = "misc",  
     name = "Misc",  
     funcs = {  
-        {  
+        {
             title = "Set Music",
-            desc = "Заменить музыку",
-            type = "textInput",
-            placeholder = "rbxassetid://107406485711525",
-            onSave = applyMusic,
+            desc = "rbxassetid:// ссылка на музыку",
+            type = "music"
+        },
+        {  
+            title = "Функция 2",  
+            desc = "Заглушка функции Misc"  
         },  
     }  
 },  
@@ -1659,15 +1914,39 @@ action = sellHeldUma,
     id = "teleport",
     name = "Teleport",
     funcs = {
-        { title = "Teleport To Base", desc = "", type = "action", action = teleportToOwnedPlot },
-        { title = "Teleport to Sell", desc = "", type = "action", action = function()
-            teleportToNamedObject({"SellUma", "Seller", "Sell"})
-        end },
-        { title = "Teleport to Kick Station", desc = "", type = "action", action = teleportToKick },
-        { title = "Teleport to Shop", desc = "", type = "action", action = function()
-            teleportToNamedObject({"Shop", "ShopGuy", "Shop Guy"})
-        end },
-    },
+        {
+            title = "Teleport To Base",
+            desc = "На свой плот",
+            type = "action",
+            onClick = function()
+                if not teleportToOwnPlot() then
+                    print("[Sakura] Teleport To Base: свой плот не найден")
+                end
+            end,
+        },
+        {
+            title = "Teleport to Sell",
+            desc = "К NPC продажи",
+            type = "action",
+            onClick = teleportToSell,
+        },
+        {
+            title = "Teleport to Kick Station",
+            desc = "В зону удара",
+            type = "action",
+            onClick = function()
+                if not teleportToKick() then
+                    print("[Sakura] Teleport to Kick Station: зона не найдена")
+                end
+            end,
+        },
+        {
+            title = "Teleport to Shop",
+            desc = "К магазину",
+            type = "action",
+            onClick = teleportToShop,
+        },
+    }
 },
 
 {  
@@ -2294,70 +2573,113 @@ if tab.id == "settings" then
     ).LayoutOrder = 2  
 
 elseif tab.id == "home" then
-    local player = Players.LocalPlayer
-    local stats = newFrame({
-        Size = UDim2.new(1, 0, 0, 210),
-        BackgroundColor3 = CONFIG.CardColor,
+
+    -- ===== HOME: аватар, ник, голая статистика =====
+    local header = newFrame({
+        Name = "Header",
+        Size = UDim2.new(1, 0, 0, 64),
+        BackgroundTransparency = 1,
+        LayoutOrder = 1,
     }, page)
-    corner(8, stats)
-    stroke(stats, CONFIG.AccentColor, 0.9, 1)
-    local avatar = Instance.new("ImageLabel")
-    avatar.Size = UDim2.fromOffset(64, 64)
-    avatar.Position = UDim2.fromOffset(18, 18)
-    avatar.BackgroundTransparency = 1
-    avatar.Parent = stats
-    corner(32, avatar)
+
+    local avatarHold = newFrame({
+        Size = UDim2.fromOffset(64, 64),
+        BackgroundColor3 = CONFIG.CardColor,
+    }, header)
+    corner(32, avatarHold)
+    stroke(avatarHold, CONFIG.AccentColor, 0.85, 1)
+
+    local avatarImg = Instance.new("ImageLabel")
+    avatarImg.Size = UDim2.fromScale(1, 1)
+    avatarImg.BackgroundTransparency = 1
+    avatarImg.Image = ""
+    avatarImg.Parent = avatarHold
+    corner(32, avatarImg)
+
     task.spawn(function()
-        local ok, image = pcall(function()
-            return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+        local ok, img = pcall(function()
+            return Players:GetUserThumbnailAsync(
+                Players.LocalPlayer.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size100x100
+            )
         end)
-        if ok then avatar.Image = image end
+        if ok then avatarImg.Image = img end
     end)
+
     newLabel({
-        Text = player.DisplayName,
-        Position = UDim2.fromOffset(96, 22),
-        Size = UDim2.new(1, -112, 0, 24),
+        Text = Players.LocalPlayer.DisplayName,
+        Position = UDim2.new(0, 76, 0, 12),
+        Size = UDim2.new(1, -76, 0, 22),
         TextXAlignment = Enum.TextXAlignment.Left,
         Font = Enum.Font.GothamBold,
         TextSize = 18,
-    }, stats)
-    local username = newLabel({
-        Text = "@" .. player.Name,
-        Position = UDim2.fromOffset(96, 48),
-        Size = UDim2.new(1, -112, 0, 18),
+    }, header)
+
+    newLabel({
+        Text = "@" .. Players.LocalPlayer.Name,
+        Position = UDim2.new(0, 76, 0, 36),
+        Size = UDim2.new(1, -76, 0, 16),
         TextXAlignment = Enum.TextXAlignment.Left,
         TextColor3 = CONFIG.MutedTextColor,
         TextSize = 12,
-    }, stats)
-    local values = {}
-    for index, name in ipairs({"Cash", "Kick Power", "Speed", "Jump", "Rebirths"}) do
-        values[name] = newLabel({
-            Text = name .. ": -",
-            Position = UDim2.new(0, 18, 0, 92 + (index - 1) * 21),
-            Size = UDim2.new(1, -36, 0, 18),
+    }, header)
+
+    local statsBox = newFrame({
+        Name = "Stats",
+        Size = UDim2.new(1, 0, 0, 130),
+        BackgroundColor3 = CONFIG.CardColor,
+        LayoutOrder = 2,
+    }, page)
+    corner(8, statsBox)
+    stroke(statsBox, CONFIG.AccentColor, 0.9, 1)
+
+    local statLabels = {}
+    local statOrder = { "Cash", "Kick Power", "Speed", "Rebirths" }
+    for i, name in ipairs(statOrder) do
+        statLabels[name] = newLabel({
+            Text = name .. ": —",
+            Position = UDim2.new(0, 14, 0, 8 + (i - 1) * 28),
+            Size = UDim2.new(1, -28, 0, 22),
             TextXAlignment = Enum.TextXAlignment.Left,
-            TextSize = 12,
-        }, stats)
+            TextSize = 13,
+        }, statsBox)
     end
-    local function readValue(name)
-        local leaderstats = player:FindFirstChild("leaderstats")
-        local value = leaderstats and leaderstats:FindFirstChild(name)
-        return value and value.Value or player:GetAttribute(name) or "-"
-    end
-    local function updateStats()
-        for name, label in pairs(values) do
-            label.Text = name .. ": " .. tostring(readValue(name))
+
+    local function fmt(n)
+        if type(n) ~= "number" then return tostring(n) end
+        local units = { "", "K", "M", "B", "T", "Qa", "Qi" }
+        local i = 1
+        while math.abs(n) >= 1000 and i < #units do
+            n = n / 1000
+            i = i + 1
         end
+        return string.format("%.2f%s", n, units[i])
     end
-    updateStats()
-    task.spawn(function()
-        while stats.Parent do
-            updateStats()
-            task.wait(1)
-        end
+
+    local function refreshStats()
+        local lp = Players.LocalPlayer
+        local ls = lp:FindFirstChild("leaderstats")
+
+        local cash = ls and ls:FindFirstChild("Cash")
+        statLabels["Cash"].Text = "Cash: " .. (cash and fmt(cash.Value) or "—")
+
+        local kp = lp:GetAttribute("SelectedKickPower")
+        statLabels["Kick Power"].Text = "Kick Power: " .. (kp and fmt(kp) or "—")
+
+        local hum = getHumanoid()
+        statLabels["Speed"].Text = "Speed: " .. (hum and tostring(math.floor(hum.WalkSpeed)) or "—")
+
+        local reb = ls and ls:FindFirstChild("Rebirths")
+        statLabels["Rebirths"].Text = "Rebirths: " .. (reb and tostring(reb.Value) or "—")
+    end
+
+    refreshStats()
+    bind(RunService.Heartbeat, function()
+        if page.Visible then refreshStats() end
     end)
 
-else  
+else
 
     for fIndex, f in ipairs(  
         tab.funcs  
@@ -2390,16 +2712,18 @@ else
                     key  
                 )  
 
-        elseif f.type == "textInput" then
-            card = createTextInputCard(page, f.title, f.desc, key, f.placeholder, f.onSave)
-        elseif f.type == "select" then
-            card = newFrame({
-                Size = UDim2.new(1, 0, 0, 44),
-                BackgroundTransparency = 1,
-            }, page)
-            createPercentRow(card, f.title, f.options, f.default, f.onSelect, "")
+        elseif f.type == "music" then
+
+            card = createMusicCard(page, f.title, f.desc, key)
+
         elseif f.type == "action" then
-            card = createActionCard(page, f.title, f.desc, key, f.action)
+
+            card = createActionCard(page, f.title, f.desc, f.onClick)
+
+        elseif f.type == "stepper" then
+
+            card = createNumberStepper(page, f.title, f.options, f.default, f.onSelect)
+
         else  
 
             card =  
