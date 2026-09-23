@@ -321,40 +321,32 @@ elseif kind == "settings" then
 
 elseif kind == "home" then  
 
-    corner(3, newFrame({  
-        Size = UDim2.fromOffset(size * 0.62, size * 0.62),  
-        Position = UDim2.new(0.5, 0, 0.55, 0),  
-        AnchorPoint = Vector2.new(0.5, 0.5),  
-        Rotation = 45,  
-        BackgroundColor3 = W,  
-    }, holder))  
+    local body = newFrame({
+        Size = UDim2.fromOffset(size * 0.62, size * 0.46),
+        Position = UDim2.new(0.5, 0, 0.62, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundColor3 = W,
+    }, holder)
+    corner(2, body)
 
-    corner(size, newFrame({  
-        Size = UDim2.fromOffset(size * 0.72, size * 0.72),  
-        Position = UDim2.new(0.5, 0, 0.7, 0),  
-        AnchorPoint = Vector2.new(0.5, 1),  
-        BackgroundColor3 = CONFIG.BgColor,  
-        ZIndex = 2,  
-    }, holder))  
+    corner(2, newFrame({
+        Size = UDim2.fromOffset(size * 0.52, size * 0.16),
+        Position = UDim2.new(0.5, 0, 0.31, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Rotation = 34,
+        BackgroundColor3 = W,
+    }, holder))
 
-    corner(4, newFrame({  
-        Size = UDim2.fromOffset(size * 0.42, size * 0.42),  
-        Position = UDim2.new(0.5, 0, 0.3, 0),  
-        AnchorPoint = Vector2.new(0.5, 0.5),  
-        Rotation = 45,  
-        BackgroundColor3 = W,  
-        ZIndex = 3,  
-    }, holder))  
-
-    corner(2, newFrame({  
-        Size = UDim2.fromOffset(size * 0.5, size * 0.42),  
-        Position = UDim2.new(0.5, 0, 0.78, 0),  
-        AnchorPoint = Vector2.new(0.5, 1),  
-        BackgroundColor3 = W,  
-    }, holder))  
+    corner(2, newFrame({
+        Size = UDim2.fromOffset(size * 0.52, size * 0.16),
+        Position = UDim2.new(0.5, 0, 0.31, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Rotation = -34,
+        BackgroundColor3 = W,
+    }, holder))
 
     corner(2, newFrame({  
-        Size = UDim2.fromOffset(size * 0.16, size * 0.24),  
+        Size = UDim2.fromOffset(size * 0.16, size * 0.27),  
         Position = UDim2.new(0.5, 0, 1, 0),  
         AnchorPoint = Vector2.new(0.5, 1),  
         BackgroundColor3 = CONFIG.BgColor,  
@@ -610,15 +602,6 @@ newLabel({
     TextSize = 13,  
 }, card)  
 
-newLabel({  
-    Text = desc,  
-    Position = UDim2.new(0, 14, 0, 24),  
-    Size = UDim2.new(1, -72, 0, 16),  
-    TextXAlignment = Enum.TextXAlignment.Left,  
-    TextColor3 = CONFIG.MutedTextColor,  
-    TextSize = 11,  
-}, card)  
-
 local toggleHolder = newFrame({  
     Size = UDim2.fromOffset(42, 24),  
     Position = UDim2.new(1, -14, 0, 12),  
@@ -704,15 +687,6 @@ newLabel({
     TextXAlignment = Enum.TextXAlignment.Left,  
     Font = Enum.Font.GothamBold,  
     TextSize = 13,  
-}, card)  
-
-newLabel({  
-    Text = desc,  
-    Position = UDim2.new(0, 14, 0, 24),  
-    Size = UDim2.new(1, -48, 0, 16),  
-    TextXAlignment = Enum.TextXAlignment.Left,  
-    TextColor3 = CONFIG.MutedTextColor,  
-    TextSize = 11,  
 }, card)  
 
 local chevronHold = newFrame({  
@@ -889,17 +863,9 @@ end
 -- ============================================================
 local function createInputCard(parent, title, desc, key)
 return createCard(parent, title, desc, key, {
-expandedH = 88,
+    expandedH = 72,
 
 build = function(panel, saved)  
-        newLabel({  
-            Text = "Описание",  
-            Size = UDim2.new(1, -100, 0, 30),  
-            TextXAlignment = Enum.TextXAlignment.Left,  
-            TextColor3 = CONFIG.MutedTextColor,  
-            TextSize = 12,  
-        }, panel)  
-
         local box = Instance.new("TextBox")  
 
         box.Name = "Input"  
@@ -950,7 +916,7 @@ local saved = SavedState.controls[key] or {}
 
 local card = newFrame({
 Name = "MusicCard",
-Size = UDim2.new(1, 0, 0, 92),
+    Size = UDim2.new(1, 0, 0, 210),
 BackgroundColor3 = CONFIG.CardColor,
 }, parent)
 corner(8, card)
@@ -965,22 +931,14 @@ newLabel({
     TextSize = 13,  
 }, card)  
 
-newLabel({  
-    Text = desc,  
-    Position = UDim2.new(0, 14, 0, 24),  
-    Size = UDim2.new(1, -28, 0, 16),  
-    TextXAlignment = Enum.TextXAlignment.Left,  
-    TextColor3 = CONFIG.MutedTextColor,  
-    TextSize = 11,  
-}, card)  
-
 local box = Instance.new("TextBox")  
 box.Name = "MusicId"  
-box.Size = UDim2.new(1, -28, 0, 32)  
-box.Position = UDim2.new(0, 14, 0, 46)  
+box.Size = UDim2.fromOffset(150, 30)  
+box.Position = UDim2.new(1, -14, 0, 28)  
+box.AnchorPoint = Vector2.new(1, 0)  
 box.BackgroundColor3 = CONFIG.BgColor  
 box.TextColor3 = CONFIG.AccentColor  
-box.PlaceholderText = "rbxassetid://... или просто цифры"  
+box.PlaceholderText = "ID музыки"  
 box.PlaceholderColor3 = CONFIG.MutedTextColor  
 box.Font = Enum.Font.GothamMedium  
 box.TextSize = 13  
@@ -990,13 +948,49 @@ box.Parent = card
 corner(6, box)  
 stroke(box, CONFIG.AccentColor, 0.85, 1)  
 
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -100, 0, 30)
+searchBox.Position = UDim2.new(0, 14, 0, 68)
+searchBox.BackgroundColor3 = CONFIG.BgColor
+searchBox.TextColor3 = CONFIG.AccentColor
+searchBox.PlaceholderText = "Поиск по названию"
+searchBox.PlaceholderColor3 = CONFIG.MutedTextColor
+searchBox.Font = Enum.Font.GothamMedium
+searchBox.TextSize = 13
+searchBox.ClearTextOnFocus = false
+searchBox.Parent = card
+corner(6, searchBox)
+stroke(searchBox, CONFIG.AccentColor, 0.85, 1)
+
+local searchButton = Instance.new("TextButton")
+searchButton.Size = UDim2.fromOffset(70, 30)
+searchButton.Position = UDim2.new(1, -14, 0, 68)
+searchButton.AnchorPoint = Vector2.new(1, 0)
+searchButton.BackgroundColor3 = CONFIG.AccentColor
+searchButton.TextColor3 = CONFIG.BgColor
+searchButton.Text = "Искать"
+searchButton.Font = Enum.Font.GothamBold
+searchButton.TextSize = 12
+searchButton.AutoButtonColor = true
+searchButton.Parent = card
+corner(6, searchButton)
+
+local results = newFrame({
+    Name = "MusicResults",
+    Position = UDim2.new(0, 14, 0, 106),
+    Size = UDim2.new(1, -28, 0, 90),
+    BackgroundTransparency = 1,
+}, card)
+local resultsLayout = Instance.new("UIListLayout")
+resultsLayout.Padding = UDim.new(0, 4)
+resultsLayout.Parent = results
+
 local function apply()  
-    local id = box.Text  
+    local id = box.Text:gsub("%s+", "")  
     if id == "" then return end  
 
-    if not string.find(id, "^rbxassetid://") then  
-        id = "rbxassetid://" .. string.gsub(id, "%D", "")  
-    end  
+    id = "rbxassetid://" .. id:gsub("rbxassetid://", ""):gsub("%D", "")
+    if id == "rbxassetid://" then return end
     box.Text = id  
 
     saveField(key, "text", id)  
@@ -1025,6 +1019,50 @@ end
 
 box.FocusLost:Connect(apply)  
 
+local function httpGet(url)
+    local fn = request or http_request or (syn and syn.request)
+    if fn then
+        local response = fn({ Url = url, Method = "GET" })
+        return response and response.Body
+    end
+    return HttpService:GetAsync(url)
+end
+
+local function searchMusic()
+    for _, child in ipairs(results:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    local keyword = searchBox.Text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+    if keyword == "" then return end
+    local encoded = HttpService:UrlEncode(keyword)
+    local ok, body = pcall(httpGet, "https://catalog.roblox.com/v1/search/items/details?Category=3&Subcategory=3&SortType=0&Keyword=" .. encoded .. "&Limit=10")
+    if not ok or not body then return end
+    local parsedOk, data = pcall(HttpService.JSONDecode, HttpService, body)
+    if not parsedOk or type(data) ~= "table" then return end
+    for _, item in ipairs(data.data or {}) do
+        local result = Instance.new("TextButton")
+        result.Size = UDim2.new(1, 0, 0, 24)
+        result.BackgroundColor3 = CONFIG.BgColor
+        result.TextColor3 = CONFIG.AccentColor
+        result.TextXAlignment = Enum.TextXAlignment.Left
+        result.Text = "  " .. tostring(item.name or item.id)
+        result.Font = Enum.Font.GothamMedium
+        result.TextSize = 11
+        result.AutoButtonColor = true
+        result.Parent = results
+        corner(4, result)
+        result.Activated:Connect(function()
+            box.Text = tostring(item.id)
+            apply()
+        end)
+    end
+end
+
+searchButton.Activated:Connect(searchMusic)
+searchBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then searchMusic() end
+end)
+
 return card
 
 end
@@ -1037,7 +1075,7 @@ local saved = SavedState.controls[key] or {}
 
 local card = newFrame({
 Name = "AmountCard",
-Size = UDim2.new(1, 0, 0, 92),
+    Size = UDim2.new(1, 0, 0, 70),
 BackgroundColor3 = CONFIG.CardColor,
 }, parent)
 corner(8, card)
@@ -1052,19 +1090,11 @@ newLabel({
     TextSize = 13,  
 }, card)  
 
-newLabel({  
-    Text = desc,  
-    Position = UDim2.new(0, 14, 0, 24),  
-    Size = UDim2.new(1, -28, 0, 16),  
-    TextXAlignment = Enum.TextXAlignment.Left,  
-    TextColor3 = CONFIG.MutedTextColor,  
-    TextSize = 11,  
-}, card)  
-
 local box = Instance.new("TextBox")  
 box.Name = "Amount"  
-box.Size = UDim2.new(1, -28, 0, 32)  
-box.Position = UDim2.new(0, 14, 0, 46)  
+box.Size = UDim2.fromOffset(150, 30)  
+box.Position = UDim2.new(1, -14, 0, 28)  
+box.AnchorPoint = Vector2.new(1, 0)  
 box.BackgroundColor3 = CONFIG.BgColor  
 box.TextColor3 = CONFIG.AccentColor  
 box.PlaceholderText = "Введите число..."  
@@ -1834,6 +1864,15 @@ local function getOwnPlotName()
     return nil
 end
 
+local function getOwnPlotModel()
+    local ok, service = pcall(function()
+        return require(
+            game:GetService("ReplicatedStorage").Modules.ServicesLoader.ClientPlotService
+        )
+    end)
+    return ok and service and service.Model or nil
+end
+
 -- ============================================================
 -- ФЕРМА: DAILY QUEST / AUTO COLLECT / AUTO UPGRADE
 -- ============================================================
@@ -1877,12 +1916,43 @@ end
 -- открывает и пытается забрать ежедневный квест. Известен только один
 -- вариант награды ("Lifts") — если квестов несколько разных, пришли их
 -- названия, добавлю перебор по списку
+local dailyQuestPacket
+local dailyQuestListenerAttached = false
+
+local function getAvailableKicksQuest()
+    local quests = dailyQuestPacket and dailyQuestPacket.Quests
+    if type(quests) ~= "table" then return nil end
+    for _, quest in pairs(quests) do
+        local id = tostring(quest.Id or quest.Key or "")
+        local title = string.lower(tostring(quest.Title or ""))
+        if id == "Kicks" or string.find(string.lower(id), "kick", 1, true)
+            or string.find(title, "kick", 1, true) then
+            local current = tonumber(quest.Current) or 0
+            local target = tonumber(quest.Target) or math.huge
+            if current >= target and not quest.Claimed then
+                return quest.Id or quest.Key or "Kicks"
+            end
+        end
+    end
+end
+
 local DailyQuestHandlers = makeLoopToggle("Daily Quest", function()
     local net = getNetwork()
     if not net then return end
+    if not dailyQuestListenerAttached then
+        dailyQuestListenerAttached = true
+        pcall(function()
+            net:WaitForChild("rev_DailyQuests_Update", 5).OnClientEvent:Connect(function(packet)
+                dailyQuestPacket = packet
+            end)
+        end)
+    end
     net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
     task.wait(0.3)
-    net:WaitForChild("rev_DailyQuests_Claim", 5):FireServer("Lifts")
+    local questId = getAvailableKicksQuest()
+    if questId then
+        net:WaitForChild("rev_DailyQuests_Claim", 5):FireServer(questId)
+    end
 end, 30)
 
 -- определяет свой плот через ClientPlotService и телепортирует к его двери
@@ -1902,42 +1972,103 @@ local AutoCollectHandlers = makeLoopToggle("Auto Collect Cash", function()
     local net = getNetwork()
     if not net then return end
 
-    local name = getOwnPlotName()
-    local slots = name and SLOT_POSITIONS[name]
-    local char = Players.LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not (slots and root) then
+    local plot = getOwnPlotModel()
+    local slotsFolder = plot and plot:FindFirstChild("Slots")
+    local buttons = plot and plot:FindFirstChild("Buttons")
+    if not (slotsFolder and buttons) then
         print("[Sakura] Auto Collect Cash: свой плот не определён")
         return
     end
 
     local ev = net:WaitForChild("rev_B_Collect", 5)
-    for i, pos in ipairs(slots) do
-        root.CFrame = CFrame.new(pos) + Vector3.new(0, 2, 0)
-        task.wait(0.08)
-        ev:FireServer(i)
-        task.wait(0.05)
+    for _, slot in ipairs(slotsFolder:GetChildren()) do
+        local slotId = tonumber(string.match(slot.Name, "%d+"))
+        local coins = tonumber(slot:GetAttribute("Coins")) or 0
+        local offline = tonumber(slot:GetAttribute("OfflineCoins")) or 0
+        for _, placed in ipairs(slot:GetDescendants()) do
+            coins = math.max(coins, tonumber(placed:GetAttribute("Coins")) or 0)
+            offline = math.max(offline, tonumber(placed:GetAttribute("OfflineCoins")) or 0)
+        end
+        if slotId and (coins > 0 or offline > 0) then
+            local button = buttons:FindFirstChild("Slot" .. slotId)
+            if button then
+                local char = Players.LocalPlayer.Character
+                local root = char and char:FindFirstChild("HumanoidRootPart")
+                if root then root.CFrame = button.CFrame + Vector3.new(0, 3, 0) end
+                task.wait(0.08)
+                ev:FireServer(slotId)
+                task.wait(0.05)
+            end
+        end
     end
 end, 3)
 
--- количество, с которым шлются апгрейды — крутится степперами в Player
--- ("Select Speed Upgrade Amount" / "Select Power Upgrade Amount")
+-- Количество speed-апгрейдов вычисляется по текущему балансу перед каждым циклом.
 local savedAmounts = SavedState.controls["upgrade_amounts"] or {}
 local SpeedUpgradeAmount = { value = savedAmounts.speed or 1 }
-local PowerUpgradeAmount = { value = savedAmounts.power or 8 }
+local AutoUpgradeActive = false
 
--- повторяет апгрейд Umas с выбранным количеством (по умолчанию 8, как в примере)
-local AutoUpgradeHandlers = makeLoopToggle("Auto Upgrade", function()
+local function upgradeEachUmaOnce()
     local net = getNetwork()
     if not net then return end
-    net:WaitForChild("rev_B_Upgrade", 5):FireServer(PowerUpgradeAmount.value)
-end, 1)
+    local plot = getOwnPlotModel()
+    local slotsFolder = plot and plot:FindFirstChild("Slots")
+    if not slotsFolder then return end
+    local ev = net:WaitForChild("rev_B_Upgrade", 5)
+    for _, slot in ipairs(slotsFolder:GetChildren()) do
+        local slotId = tonumber(string.match(slot.Name, "%d+"))
+        if slotId and slot:FindFirstChildWhichIsA("BasePart", true) then
+            ev:FireServer(slotId)
+            task.wait(0.08)
+        end
+    end
+end
+
+local AutoUpgradeHandlers = {
+    onToggle = function(state)
+        AutoUpgradeActive = state
+        if state then
+            task.spawn(function()
+                while AutoUpgradeActive do
+                    upgradeEachUmaOnce()
+                    task.wait(1)
+                end
+            end)
+        end
+    end,
+}
 
 -- повторяет апгрейд скорости с выбранным количеством (по умолчанию 1, как в примере)
+local function getMaxAffordableSpeedUpgrades()
+    local ok, balanceService = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.ClientBalanceService)
+    end)
+    local okSpeed, speedService = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.SpeedServiceClient)
+    end)
+    local okData, speedData = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Shared.Data.SpeedData)
+    end)
+    local okMath, infiniteMath = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Shared.Utility.InfiniteMath)
+    end)
+    if not (ok and okSpeed and okData and okMath and balanceService and speedService and speedData and infiniteMath) then return 1 end
+    local count = 0
+    local spent = infiniteMath.new(0)
+    while count < 1000 do
+        local cost = speedData:GetCostForLevel(speedService.Level + count + 1)
+        if balanceService.Balance < spent + cost then break end
+        spent = spent + cost
+        count = count + 1
+    end
+    return math.max(count, 1)
+end
+
 local SpeedUpgradeHandlers = makeLoopToggle("Speed Upgrade", function()
+    if AutoUpgradeActive then upgradeEachUmaOnce() end
     local net = getNetwork()
     if not net then return end
-    net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(SpeedUpgradeAmount.value)
+    net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(getMaxAffordableSpeedUpgrades())
 end, 1)
 
 -- берёт первый предмет инвентаря (Tool в Backpack) и жмёт тренировку веса
@@ -2001,10 +2132,6 @@ local AutoOfflineClaimHandlers = makeLoopToggle("Auto Offline Claim", function()
     net:WaitForChild("rev_Offline_Claim", 5):FireServer()
 end, 60)
 
--- продаёт Uma, которую держит игрок. Точное имя ремоута для ОДИНОЧНОЙ
--- продажи мне не присылали (только ref_B_SellAll для продажи всех) —
--- это предположение по аналогии, проверь в игре и пришли точный вызов,
--- если не сработает
 local function sellHeldUma()
     local net = getNetwork()
     if not net then return end
@@ -2012,13 +2139,8 @@ local function sellHeldUma()
     local tool = char and char:FindFirstChildOfClass("Tool")
 
     local ok, err = pcall(function()
-        local ev = net:FindFirstChild("rev_B_Sell") or net:FindFirstChild("ref_B_Sell")
-        if not ev then error("remote rev_B_Sell / ref_B_Sell не найден") end
-        if ev:IsA("RemoteFunction") then
-            ev:InvokeServer(tool and tool.Name)
-        else
-            ev:FireServer(tool and tool.Name)
-        end
+        local ev = net:WaitForChild("ref_B_Sell", 5)
+        ev:InvokeServer()
     end)
     if not ok then
         print("[Sakura] Sell Uma: " .. tostring(err))
@@ -2121,21 +2243,6 @@ onApply = function(v)
 end,
 },
 {
-title = "Select Power Upgrade Amount",
-desc = "Ввести число — прокачает разово",
-type = "amount",
-onApply = function(v)
-    PowerUpgradeAmount.value = v
-    saveField("upgrade_amounts", "power", v)
-    local net = getNetwork()
-    if not net then return end
-    local ok, err = pcall(function()
-        net:WaitForChild("rev_B_Upgrade", 5):FireServer(v)
-    end)
-    if not ok then print("[Sakura] Power Upgrade Amount error: " .. tostring(err)) end
-end,
-},
-{
 title = "Sell Uma",
 desc = "Продать Uma в руках (проверь вызов)",
 type = "action",
@@ -2154,7 +2261,7 @@ onClick = sellHeldUma,
             handlers = KickHandlers  
         },  
         {  
-            title = "Auto Collect Quest",  
+            title = "Auto Claim Quest",
             desc = "Открыть и забрать ежедневный квест",  
             handlers = DailyQuestHandlers  
         },  
@@ -2164,7 +2271,7 @@ onClick = sellHeldUma,
             handlers = AutoCollectHandlers  
         },  
         {  
-            title = "Auto Upgrade",  
+            title = "Auto Upgrade Umas",
             desc = "Повтор апгрейда Umas",  
             handlers = AutoUpgradeHandlers  
         },  
@@ -2200,10 +2307,6 @@ onClick = sellHeldUma,
             desc = "rbxassetid:// ссылка на музыку",
             type = "music"
         },
-        {  
-            title = "Функция 2",  
-            desc = "Заглушка функции Misc"  
-        },  
     }  
 },  
 
