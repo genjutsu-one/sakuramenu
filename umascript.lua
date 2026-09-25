@@ -2382,17 +2382,33 @@ local function sellHeldUma()
 end
 
 -- ============================================================
+-- ============================================================
 -- AUTO PLAY
 -- ============================================================
+local PlaceInventoryUmasHandler
 local AutoPlayHandlers
 do
     local active, token = false, 0
     local kickRunning = false
+    local trainingRunning = false
+    local mode = "idle"
 
     local function setKick(state)
         if state == kickRunning then return end
         kickRunning = state
         KickHandlers.onToggle(state)
+    end
+
+    local function setTraining(state)
+        if state == trainingRunning then return end
+        trainingRunning = state
+        AutoTrainingHandlers.onToggle(state)
+    end
+
+    local function setMode(nextMode)
+        mode = nextMode
+        setKick(nextMode == "kicking")
+        setTraining(nextMode == "training")
     end
 
     local function countHeldUmas()
@@ -2475,14 +2491,33 @@ do
         task.wait(0.2)
     end
 
-    local function sortPlotSlots()
+    local function waitForSlotState(slot, occupied, timeout)
+        local deadline = os.clock() + timeout
+        local checkAfter = os.clock() + 0.35
+        repeat
+            local placedUma = slot.slot:FindFirstChildOfClass("Part")
+            if os.clock() >= checkAfter and (placedUma ~= nil) == occupied then
+                slot.uma = placedUma
+                return true
+            end
+            task.wait(0.1)
+        until os.clock() >= deadline
+        return false
+    end
+
+    local function sortPlotSlots(ascending)
         local slots = getAllPlotSlotRecords()
         for index = 1, #slots do
             local best = nil
             for candidate = index, #slots do
                 local slot = slots[candidate]
-                if slot.uma and (not best or getUmaIncome(slot.uma) > getUmaIncome(slots[best].uma)) then
-                    best = candidate
+                if slot.uma then
+                    local income = getUmaIncome(slot.uma)
+                    local bestIncome = best and getUmaIncome(slots[best].uma)
+                    if not best or (ascending and income < bestIncome)
+                        or (not ascending and income > bestIncome) then
+                        best = candidate
+                    end
                 end
             end
 
@@ -2490,15 +2525,22 @@ do
                 if slots[index].uma then
                     moveToSlot(slots[index])
                     if not interact(slots[index].index) then return false end
-                    task.wait(0.35)
+                    if not waitForSlotState(slots[index], false, 3) then return false end
+                    moveToSlot(slots[best])
+                    if not interact(slots[best].index) then return false end
+                    if not waitForSlotState(slots[best], true, 3) then return false end
+                    moveToSlot(slots[index])
+                    if not interact(slots[index].index) then return false end
+                    if not waitForSlotState(slots[index], true, 3) then return false end
+                else
+                    moveToSlot(slots[best])
+                    if not interact(slots[best].index) then return false end
+                    if not waitForSlotState(slots[best], false, 3) then return false end
+                    moveToSlot(slots[index])
+                    if not interact(slots[index].index) then return false end
+                    if not waitForSlotState(slots[index], true, 3) then return false end
                 end
-                moveToSlot(slots[best])
-                if not interact(slots[best].index) then return false end
-                task.wait(0.35)
-                moveToSlot(slots[index])
-                if not interact(slots[index].index) then return false end
-                task.wait(0.35)
-                slots[index], slots[best] = slots[best], slots[index]
+                slots = getAllPlotSlotRecords()
             end
         end
         return true
@@ -2525,7 +2567,7 @@ do
         moveToSlot(target)
         if target.uma then
             if not interact(target.index) then return false end
-            task.wait(0.35)
+            if not waitForSlotState(target, false, 3) then return false end
         end
 
         local hum = getHumanoid()
@@ -2536,10 +2578,63 @@ do
         end
         if newTool.Parent == backpack then hum:EquipTool(newTool) end
         task.wait(0.2)
-        local placed = interact(target.index)
-        task.wait(0.35)
-        if placed then sortPlotSlots() end
-        return placed
+        if not interact(target.index) then return false end
+        if not waitForSlotState(target, true, 3) then return false end
+        sortPlotSlots(false)
+        return true
+    end
+
+    PlaceInventoryUmasHandler = function()
+        if active then
+            print("[Sakura] Сначала выключи Auto Play")
+            return
+        end
+        if Players.LocalPlayer:GetAttribute("LocalKickBusy") == true then
+            print("[Sakura] Дождись завершения кика")
+            return
+        end
+
+        local backpack = Players.LocalPlayer:FindFirstChild("Backpack")
+        local humanoid = getHumanoid()
+        if not (backpack and humanoid) then return end
+
+        local resumeKick = SavedState.controls["farm_1"]
+            and SavedState.controls["farm_1"].on or false
+        local resumeTraining = SavedState.controls["farm_6"]
+            and SavedState.controls["farm_6"].on or false
+        KickHandlers.onToggle(false)
+        AutoTrainingHandlers.onToggle(false)
+
+        local ok, err = pcall(function()
+            local inventory = {}
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if isUmaTool(tool) then table.insert(inventory, tool) end
+            end
+            table.sort(inventory, function(a, b)
+                return getUmaIncome(a) < getUmaIncome(b)
+            end)
+
+            local emptySlots = {}
+            for _, slot in ipairs(getAllPlotSlotRecords()) do
+                if not slot.uma then table.insert(emptySlots, slot) end
+            end
+
+            for index, tool in ipairs(inventory) do
+                local slot = emptySlots[index]
+                if not slot then break end
+                moveToSlot(slot)
+                humanoid:EquipTool(tool)
+                task.wait(0.2)
+                if not interact(slot.index) or not waitForSlotState(slot, true, 3) then
+                    error("Не удалось подтвердить размещение Uma в слоте " .. slot.index)
+                end
+            end
+            sortPlotSlots(true)
+        end)
+
+        if resumeKick then KickHandlers.onToggle(true) end
+        if resumeTraining then AutoTrainingHandlers.onToggle(true) end
+        if not ok then print("[Sakura] Sort Inventory Umas error: " .. tostring(err)) end
     end
 
     local function startRebirthWatch(id)
@@ -2629,7 +2724,8 @@ do
 
         local function restoreStoredUmas()
             if #storedItems == 0 then return end
-            AutoTrainingHandlers.onToggle(false)
+            local resumeMode = mode
+            setMode("placing")
             for _, item in ipairs(storedItems) do
                 local known = {}
                 for _, tool in ipairs(getUmaTools()) do known[tool] = true end
@@ -2660,23 +2756,25 @@ do
                         end
                         if target then
                             if target.uma then
-                                interact(target.index)
-                                task.wait(0.35)
+                                if interact(target.index) then
+                                    waitForSlotState(target, false, 3)
+                                end
                             end
                             local hum = getHumanoid()
                             local backpack = Players.LocalPlayer:FindFirstChild("Backpack")
                             if hum and backpack and tool.Parent == backpack then
                                 hum:EquipTool(tool)
                                 task.wait(0.2)
-                                interact(target.index)
-                                task.wait(0.35)
+                                if interact(target.index) then
+                                    waitForSlotState(target, true, 3)
+                                end
                             end
                         end
                     end
                 end
             end
             table.clear(storedItems)
-            AutoTrainingHandlers.onToggle(true)
+            if active and token == id then setMode(resumeMode) end
         end
 
         local observedLevel = rebirthSvc.RebirthLevel
@@ -2693,9 +2791,10 @@ do
             while active and token == id do
                 local requirement = rebirthData:GetKickRequirement(rebirthSvc.RebirthLevel + 1)
                 if not prepared and kickService.Level >= requirement * 0.9 then
-                    AutoTrainingHandlers.onToggle(false)
+                    local resumeMode = mode
+                    setMode("placing")
                     prepared = storeTopUmas()
-                    AutoTrainingHandlers.onToggle(true)
+                    if active and token == id then setMode(resumeMode) end
                 end
                 task.wait(2)
             end
@@ -2705,48 +2804,84 @@ do
 
     local function loop(id)
         startRebirthWatch(id)
-        KickHandlers.onToggle(false)
-        AutoTrainingHandlers.onToggle(false)
-        sortPlotSlots()
-        setKick(true)
-        AutoTrainingHandlers.onToggle(true)
+        setMode("placing")
+        sortPlotSlots(false)
         local knownTools = {}
         for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
 
+        local phase = "training"
         while active and token == id do
-            local n = countHeldUmas()
-            setKick(n < 24)
-            local newTool
-            for _, tool in ipairs(getUmaTools()) do
-                if not knownTools[tool] then
-                    newTool = tool
-                    break
+            setMode(phase)
+            local phaseEnd = os.clock() + 600
+
+            while active and token == id and os.clock() < phaseEnd do
+                if phase == "kicking" then
+                    setKick(countHeldUmas() < 24)
+
+                    local newTool
+                    for _, tool in ipairs(getUmaTools()) do
+                        if not knownTools[tool] then
+                            newTool = tool
+                            break
+                        end
+                    end
+
+                    if newTool then
+                        setMode("placing")
+                        local waitStarted = os.clock()
+                        local kickController
+                        pcall(function()
+                            kickController = require(
+                                game:GetService("ReplicatedStorage").Modules.ControllerLoader.KickController
+                            )
+                        end)
+                        while active and token == id and os.clock() - waitStarted < 15 do
+                            local inMinigame = kickController and kickController.InMinigame
+                            local inGame = Players.LocalPlayer:GetAttribute("LocalKickBusy") == true
+                            if not inMinigame and not inGame then break end
+                            task.wait(0.1)
+                        end
+
+                        local placed = false
+                        if active and token == id then
+                            placed = replaceLowestIncomeUma(newTool)
+                        end
+                        if placed then
+                            knownTools = {}
+                            for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
+                        else
+                            knownTools[newTool] = true
+                        end
+                        if active and token == id then setMode("kicking") end
+                    else
+                        for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
+                    end
+
+                    if mode == "kicking" and countHeldUmas() < 24 then
+                        pcall(runUmaUpgradePass)
+                        local net = getNetwork()
+                        if net then
+                            local ok, ev = pcall(function()
+                                return net:WaitForChild("rev_B_Collect", 5)
+                            end)
+                            if ok then
+                                forEachOccupiedSlot("Auto Play", function(i, uma, button)
+                                    if button and hasCashToCollect(uma) then
+                                        ev:FireServer(i)
+                                    end
+                                end)
+                            end
+                        end
+                    end
                 end
-            end
-            if newTool then
-                task.wait(0.3)
-                replaceLowestIncomeUma(newTool)
-                knownTools = {}
-                for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
-            else
-                for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
+
+                task.wait(0.5)
             end
 
-            pcall(runUmaUpgradePass)
-
-            local net = getNetwork()
-            if net then
-                local ok, ev = pcall(function() return net:WaitForChild("rev_B_Collect", 5) end)
-                if ok then
-                    forEachOccupiedSlot("Auto Play", function(i) ev:FireServer(i) end)
-                end
-            end
-
-            task.wait(2)
+            phase = phase == "training" and "kicking" or "training"
         end
 
-        setKick(false)
-        AutoTrainingHandlers.onToggle(false)
+        setMode("idle")
     end
 
     AutoPlayHandlers = {
@@ -2755,6 +2890,7 @@ do
             token = token + 1
             local id = token
             if state then task.spawn(loop, id) end
+            if not state then setMode("idle") end
         end,
     }
 end
@@ -2878,6 +3014,11 @@ onClick = sellHeldUma,
         {
             title = "Sell All Umas",
             handlers = SellAllHandlers
+        },
+        {
+            title = "Place Inventory Umas (Low to High)",
+            type = "action",
+            onClick = PlaceInventoryUmasHandler,
         },
         {
             title = "Auto Play",
@@ -4131,6 +4272,10 @@ function()
 
 SpeedHandlers.onToggle(false)  
     KickHandlers.onToggle(false)
+    AutoPlayHandlers.onToggle(false)
+    AutoTrainingHandlers.onToggle(false)
+    SpeedUpgradeHandlers.onToggle(false)
+    AutoUpgradeHandlers.onToggle(false)
 
     do
         local lighting = game:GetService("Lighting")
