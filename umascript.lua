@@ -7,6 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService       = game:GetService("RunService")
 local HttpService      = game:GetService("HttpService")
 local Players          = game:GetService("Players")
+local Lighting         = game:GetService("Lighting")
 
 local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
@@ -3122,18 +3123,44 @@ CONFIG.AccentColor,
 1
 )
 
-local LiquidGlass = { enabled = SavedState.controls["settings_liquidglass"] and SavedState.controls["settings_liquidglass"].on or false }
-local legacyBlur = game:GetService("Lighting"):FindFirstChild("SakuraGlassBlur")
-if legacyBlur then legacyBlur:Destroy() end
+-- ============================================================
+-- LIQUID GLASS
+-- ============================================================
+local LiquidGlass = {
+    enabled = SavedState.controls["settings_liquidglass"]
+        and SavedState.controls["settings_liquidglass"].on or false,
+}
+
+-- пост-эффекты: живое размытие мира под меню + насыщенность/контраст.
+-- BlurEffect режет только 3D-вьюпорт, само UI остаётся резким —
+-- это и есть backdrop blur в Roblox.
+for _, name in ipairs({ "SakuraGlassBlur", "SakuraGlassColor" }) do
+    local old = Lighting:FindFirstChild(name)
+    if old then old:Destroy() end
+end
+
+local GlassBlur = Instance.new("BlurEffect")
+GlassBlur.Name = "SakuraGlassBlur"
+GlassBlur.Size = 0
+GlassBlur.Parent = Lighting
+
+local GlassColor = Instance.new("ColorCorrectionEffect")
+GlassColor.Name = "SakuraGlassColor"
+GlassColor.Saturation = 0
+GlassColor.Contrast = 0
+GlassColor.Parent = Lighting
+
+-- "плёнка" стекла поверх фона меню (контент рисуется поверх неё)
 local glassSurface = newFrame({
     Name = "GlassSurface",
     Size = UDim2.fromScale(1, 1),
     BackgroundColor3 = Color3.fromRGB(196, 218, 222),
-    BackgroundTransparency = 0.88,
+    BackgroundTransparency = 0.86,
     Visible = LiquidGlass.enabled,
-    ZIndex = 1,
+    ZIndex = 0,
 }, MainFrame)
 corner(16, glassSurface)
+
 local glassGradient = Instance.new("UIGradient")
 glassGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(236, 247, 248)),
@@ -3141,22 +3168,48 @@ glassGradient.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(1, Color3.fromRGB(222, 236, 236)),
 })
 glassGradient.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 0.18),
-    NumberSequenceKeypoint.new(0.52, 0.62),
-    NumberSequenceKeypoint.new(1, 0.28),
+    NumberSequenceKeypoint.new(0, 0.15),
+    NumberSequenceKeypoint.new(0.52, 0.6),
+    NumberSequenceKeypoint.new(1, 0.25),
 })
 glassGradient.Rotation = 35
 glassGradient.Parent = glassSurface
-stroke(glassSurface, Color3.fromRGB(239, 250, 250), 0.52, 1)
 
-local function refreshBlur()
-    glassSurface.Visible = LiquidGlass.enabled
-    MainFrame.BackgroundColor3 = LiquidGlass.enabled
-        and Color3.fromRGB(31, 42, 46)
-        or CONFIG.BgColor
-    MainFrame.BackgroundTransparency = LiquidGlass.enabled
-        and 0.34
-        or CONFIG.Transparency
+-- спекулярная кромка: видимый белый stroke с градиентом по периметру
+local glassRim = stroke(glassSurface, Color3.fromRGB(239, 250, 250), 0.45, 1.2)
+local glassRimGrad = Instance.new("UIGradient")
+glassRimGrad.Rotation = 65
+glassRimGrad.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.1),
+    NumberSequenceKeypoint.new(0.5, 0.75),
+    NumberSequenceKeypoint.new(1, 0.3),
+})
+glassRimGrad.Parent = glassRim
+
+-- живой перелив — через уже существующий shimmer-движок
+table.insert(shimmers, { grad = glassRimGrad, period = 8 })
+table.insert(shimmers, { grad = glassGradient, period = 14 })
+
+local GLASS_BG_COLOR = Color3.fromRGB(31, 42, 46)
+local GLASS_BG_TRANSPARENCY = 0.34
+
+local function mainTransparency()
+    return LiquidGlass.enabled and GLASS_BG_TRANSPARENCY or CONFIG.Transparency
+end
+
+-- depth: 0 = меню скрыто, 1 = меню открыто
+local function setGlassDepth(depth)
+    tween(GlassBlur, CONFIG.AnimTime, { Size = 12 * depth })
+    tween(GlassColor, CONFIG.AnimTime, {
+        Saturation = 0.22 * depth,
+        Contrast = 0.06 * depth,
+    })
+end
+
+local function refreshGlass()
+    glassSurface.Visible = LiquidGlass.enabled and MainFrame.Visible
+    MainFrame.BackgroundColor3 = LiquidGlass.enabled and GLASS_BG_COLOR or CONFIG.BgColor
+    MainFrame.BackgroundTransparency = mainTransparency()
 end
 
 -- ============================================================
@@ -3624,8 +3677,13 @@ if tab.id == "settings" then
             CONFIG.Transparency =  
                 1 - (val / 100)  
 
-            MainFrame.BackgroundTransparency =  
-                CONFIG.Transparency  
+            if LiquidGlass.enabled then
+                glassSurface.BackgroundTransparency =
+                    math.clamp(CONFIG.Transparency, 0.55, 0.95)
+            else
+                MainFrame.BackgroundTransparency =
+                    CONFIG.Transparency
+            end
 
             SavedState.controls[  
                 "settings_transparency"  
@@ -3683,7 +3741,7 @@ if tab.id == "settings" then
         {
             onToggle = function(state)
                 LiquidGlass.enabled = state
-                refreshBlur()
+                refreshGlass()
             end,
         }
     ).LayoutOrder = 3
@@ -4205,7 +4263,8 @@ FloatBtn.MouseButton1Click:Connect(
 
         FloatBtn.Visible = false  
         MainFrame.Visible = true  
-        refreshBlur()  
+        refreshGlass()  
+        setGlassDepth(1)  
 
         MainFrame.Size =  
             UDim2.fromScale(0, 0)  
@@ -4222,8 +4281,8 @@ FloatBtn.MouseButton1Click:Connect(
                         CONFIG.HeightScale  
                     ),  
 
-                BackgroundTransparency =  
-                    CONFIG.Transparency,  
+                BackgroundTransparency =
+                    mainTransparency(),  
             },  
             Enum.EasingStyle.Back  
         )  
@@ -4260,7 +4319,7 @@ local t =
 
             MainFrame.Visible = false  
             FloatBtn.Visible = true  
-            refreshBlur()  
+            setGlassDepth(0)  
         end  
     )  
 end
@@ -4278,9 +4337,10 @@ SpeedHandlers.onToggle(false)
     AutoUpgradeHandlers.onToggle(false)
 
     do
-        local lighting = game:GetService("Lighting")
-        local blur = lighting:FindFirstChild("SakuraGlassBlur")
-        if blur then blur:Destroy() end
+        for _, name in ipairs({ "SakuraGlassBlur", "SakuraGlassColor" }) do
+            local effect = Lighting:FindFirstChild(name)
+            if effect then effect:Destroy() end
+        end
     end
 
     for _, c in ipairs(  
@@ -4314,11 +4374,12 @@ CONFIG.WidthScale,
 CONFIG.HeightScale
 ),
 
-BackgroundTransparency =  
-        CONFIG.Transparency,  
+BackgroundTransparency =
+        mainTransparency(),  
 },  
 Enum.EasingStyle.Back
 
 )
 
-refreshBlur()
+refreshGlass()
+setGlassDepth(1)
