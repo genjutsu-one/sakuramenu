@@ -320,27 +320,31 @@ elseif kind == "settings" then
     }, holder))  
 
 elseif kind == "home" then  
+    newFrame({
+        Size = UDim2.fromOffset(size * 0.48, 2),
+        Position = UDim2.fromScale(0.35, 0.34),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Rotation = -45,
+        BackgroundColor3 = W,
+    }, holder)
 
-    -- крыша: ромб, нижняя половина скрыта корпусом дома, нарисованным поверх
+    newFrame({
+        Size = UDim2.fromOffset(size * 0.48, 2),
+        Position = UDim2.fromScale(0.65, 0.34),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Rotation = 45,
+        BackgroundColor3 = W,
+    }, holder)
+
     corner(2, newFrame({  
-        Size = UDim2.fromOffset(size * 0.62, size * 0.62),  
-        Position = UDim2.new(0.5, 0, 0.34, 0),  
-        AnchorPoint = Vector2.new(0.5, 0.5),  
-        Rotation = 45,  
+        Size = UDim2.fromOffset(size * 0.58, size * 0.4),
+        Position = UDim2.fromScale(0.5, 0.63),
+        AnchorPoint = Vector2.new(0.5, 0),
         BackgroundColor3 = W,  
     }, holder))  
 
-    -- корпус дома (рисуется после крыши, поэтому перекрывает её низ)
     corner(2, newFrame({  
-        Size = UDim2.fromOffset(size * 0.62, size * 0.42),  
-        Position = UDim2.new(0.5, 0, 1, 0),  
-        AnchorPoint = Vector2.new(0.5, 1),  
-        BackgroundColor3 = W,  
-    }, holder))  
-
-    -- дверь (вырез поверх корпуса)
-    corner(2, newFrame({  
-        Size = UDim2.fromOffset(size * 0.16, size * 0.22),  
+        Size = UDim2.fromOffset(size * 0.15, size * 0.22),
         Position = UDim2.new(0.5, 0, 1, 0),  
         AnchorPoint = Vector2.new(0.5, 1),  
         BackgroundColor3 = CONFIG.BgColor,  
@@ -857,11 +861,12 @@ end
 -- общая логика применения музыки (id -> rbxassetid://, замена всех
 -- играющих звуков), используется и Set Music, и Find Music
 local function applyMusicId(rawId)
-local id = tostring(rawId)
-
-if not string.find(id, "^rbxassetid://") then
-id = "rbxassetid://" .. string.gsub(id, "%D", "")
+local id = tostring(rawId):match("rbxassetid://(%d+)") or tostring(rawId):match("(%d+)")
+if not id then
+    print("[Sakura] Set Music: некорректный ID")
+    return nil, 0
 end
+id = "rbxassetid://" .. id
 
 local applied = 0
 for _, s in ipairs(game:GetService("SoundService"):GetDescendants()) do
@@ -900,7 +905,7 @@ stroke(card, CONFIG.AccentColor, 0.9, 1)
 newLabel({  
     Text = title,  
     Position = UDim2.new(0, 14, 0, 0),  
-    Size = UDim2.new(1, -114, 1, 0),  
+    Size = UDim2.new(1, -164, 1, 0),  
     TextXAlignment = Enum.TextXAlignment.Left,  
     Font = Enum.Font.GothamBold,  
     TextSize = 13,  
@@ -908,8 +913,8 @@ newLabel({
 
 local box = Instance.new("TextBox")  
 box.Name = "MusicId"  
-box.Size = UDim2.fromOffset(90, 30)  
-box.Position = UDim2.new(1, -14, 0.5, 0)  
+box.Size = UDim2.fromOffset(64, 26)  
+box.Position = UDim2.new(1, -76, 0.5, 0)  
 box.AnchorPoint = Vector2.new(1, 0.5)  
 box.BackgroundColor3 = CONFIG.BgColor  
 box.TextColor3 = CONFIG.AccentColor  
@@ -918,17 +923,29 @@ box.PlaceholderColor3 = CONFIG.MutedTextColor
 box.Font = Enum.Font.GothamMedium  
 box.TextSize = 13  
 box.ClearTextOnFocus = false  
-box.Text = saved.text or ""  
+box.Text = tostring(saved.text or ""):match("(%d+)") or ""  
 box.Parent = card  
 corner(6, box)  
 stroke(box, CONFIG.AccentColor, 0.85, 1)  
 
-box.FocusLost:Connect(function()  
-    if box.Text == "" then return end  
-    local id = applyMusicId(box.Text)  
-    box.Text = id  
-    saveField(key, "text", id)  
-end)  
+local setButton = newButton({
+    Name = "ApplyMusic",
+    Size = UDim2.fromOffset(54, 26),
+    Position = UDim2.new(1, -14, 0.5, 0),
+    AnchorPoint = Vector2.new(1, 0.5),
+    BackgroundColor3 = CONFIG.OffColor,
+}, card)
+corner(6, setButton)
+newLabel({ Text = "Set", Size = UDim2.fromScale(1, 1), TextSize = 12 }, setButton)
+setButton.MouseButton1Click:Connect(function()
+    local digits = box.Text:match("(%d+)")
+    if not digits then return end
+    local id = applyMusicId(digits)
+    if id then
+        box.Text = digits
+        saveField(key, "text", digits)
+    end
+end)
 
 return card
 
@@ -1030,19 +1047,23 @@ build = function(panel, saved)
             status.Text = "Поиск..."  
 
             task.spawn(function()  
-                local url = "https://apis.roblox.com/toolbox-service/v1/marketplace/300?keyword="  
+                local url = "https://apis.roblox.com/toolbox-service/v1/marketplace/3?keyword="
                     .. HttpService:UrlEncode(query) .. "&limit=10"  
 
-                local ok, body = pcall(function()  
+                local function getBody(targetUrl)
                     if request then  
-                        local res = request({ Url = url, Method = "GET" })  
+                        local res = request({ Url = targetUrl, Method = "GET" })
                         return res.Body  
                     elseif http_request then  
-                        local res = http_request({ Url = url, Method = "GET" })  
+                        local res = http_request({ Url = targetUrl, Method = "GET" })
                         return res.Body  
                     else  
-                        return game:HttpGet(url)  
+                        return game:HttpGet(targetUrl)
                     end  
+                end
+
+                local ok, body = pcall(function()
+                    return getBody(url)
                 end)  
 
                 if not ok then  
@@ -1051,7 +1072,7 @@ build = function(panel, saved)
                 end  
 
                 local ok2, data = pcall(function() return HttpService:JSONDecode(body) end)  
-                local list = ok2 and (data.data or data.Data or data.items)  
+                local list = ok2 and (data.data or data.Data or data.items or data.Items)
 
                 if not (ok2 and type(list) == "table") then  
                     status.Text = "Не удалось разобрать ответ API"  
@@ -1063,11 +1084,50 @@ build = function(panel, saved)
                     return  
                 end  
 
-                status.Text = ("Найдено: %d"):format(#list)  
+                local ids = {}
                 for _, item in ipairs(list) do  
-                    local id = item.id or item.Id or item.assetId
-                    local name = item.name or item.Name or ("Asset " .. tostring(id))  
-                    if id then addResult(name, id) end  
+                    local id = item.id or item.Id or item.assetId or item.assetID
+                    if id then table.insert(ids, tostring(id)) end
+                end
+                if #ids == 0 then
+                    status.Text = "Ничего не найдено"
+                    return
+                end
+
+                local detailsUrl = "https://apis.roblox.com/toolbox-service/v1/items/details?assetIds="
+                    .. table.concat(ids, ",")
+                local detailsOk, detailsBody = pcall(function()
+                    return getBody(detailsUrl)
+                end)
+                local detailsData
+                if detailsOk then
+                    local decoded, result = pcall(function()
+                        return HttpService:JSONDecode(detailsBody)
+                    end)
+                    if decoded then detailsData = result end
+                end
+                local detailedItems = detailsData and (detailsData.data or detailsData.Data)
+                if type(detailedItems) ~= "table" then
+                    status.Text = "Не удалось получить названия"
+                    return
+                end
+
+                local shown = 0
+                for _, item in ipairs(detailedItems) do
+                    local asset = item.asset or item.Asset or item
+                    local audio = asset.audioDetails or asset.AudioDetails or {}
+                    local id = asset.id or asset.Id or asset.assetId
+                    local name = audio.title or audio.Title or asset.name or asset.Name
+                    local artist = audio.artist or audio.Artist
+                    if id and name and tostring(name) ~= "" then
+                        addResult(artist and (tostring(name) .. " - " .. tostring(artist)) or tostring(name), id)
+                        shown = shown + 1
+                    end
+                end
+                if shown == 0 then
+                    status.Text = "Ничего не найдено"
+                else
+                    status.Text = ("Найдено: %d"):format(shown)
                 end  
             end)  
         end  
@@ -1105,7 +1165,7 @@ newLabel({
 
 local box = Instance.new("TextBox")  
 box.Name = "Amount"  
-box.Size = UDim2.fromOffset(90, 30)  
+box.Size = UDim2.fromOffset(64, 26)
 box.Position = UDim2.new(1, -14, 0.5, 0)  
 box.AnchorPoint = Vector2.new(1, 0.5)  
 box.BackgroundColor3 = CONFIG.BgColor  
@@ -1585,37 +1645,74 @@ do
         return hum ~= nil and cam.CameraSubject == hum and cam.CameraType == Enum.CameraType.Custom
     end
 
-    -- ---------- старт удара: прямой вызов rev_KickEvent с результатом Perfect ----------
-    -- сервер сам принимает исход удара от клиента — это ремоут, не тап,
-    -- никакого VirtualInputManager/сигналов тут нет вообще
-    local KickEvent
-    local function getKickEvent()
-        if KickEvent then return KickEvent end
-        local ok, ev = pcall(function()
-            return game:GetService("ReplicatedStorage")
-                :WaitForChild("Shared", 5)
-                :WaitForChild("Packages", 5)
-                :WaitForChild("Network", 5)
-                :WaitForChild("rev_KickEvent", 5)
-        end)
-        if ok then KickEvent = ev end
-        return KickEvent
-    end
+    local function startKick(id)
+        if not isActive(id) or not ready() then return false end
+        local character = lp.Character
+        local humanoid, root = getParts()
+        if not (character and humanoid and root and character.PrimaryPart) then return false end
 
-    local function startKick(id, gui)
-        local ev = getKickEvent()
-        if not ev then
-            status("rev_KickEvent не найден")
+        local rep = game:GetService("ReplicatedStorage")
+        local okController, kickController = pcall(function()
+            return require(rep.Modules.ControllerLoader.KickController)
+        end)
+        local okNetwork, networkApi = pcall(function()
+            return require(rep.Shared.Packages.Network)
+        end)
+        if not (okController and okNetwork) then return false end
+
+        lp:SetAttribute("LocalKickBusy", true)
+        humanoid:UnequipTools()
+        root.Anchored = true
+
+        local okKick, kick = pcall(function()
+            return kickController:PerformKick(character)
+        end)
+        if not okKick or not kick then
+            root.Anchored = false
+            lp:SetAttribute("LocalKickBusy", false)
             return false
         end
 
-        local function started() return busy() or gui.Enabled end
-        if not isActive(id) or not ready() then return started() end
+        local ratio
+        local deadline = os.clock() + 8
+        while isActive(id) and kickController.InMinigame and os.clock() < deadline do
+            local scale = kickController.DisplayedScale or kickController.Scale
+            if scale and scale >= 0.985 then
+                local okFire, value = pcall(function() return kick:Fire() end)
+                if okFire then ratio = value end
+                break
+            end
+            RunService.Heartbeat:Wait()
+        end
 
-        local ok = pcall(function() ev:FireServer(1) end)
-        local began = waitFor(id, started, 1.5)
-        status(string.format("старт: pcall=%s started=%s", tostring(ok), tostring(began)))
-        return began
+        if ratio == nil then
+            pcall(function() kick:Destroy() end)
+            root.Anchored = false
+            lp:SetAttribute("LocalKickBusy", false)
+            return false
+        end
+
+        local sent = pcall(function()
+            networkApi.FireServer("KickEvent", ratio)
+        end)
+        root.Anchored = false
+        if not sent then
+            lp:SetAttribute("LocalKickBusy", false)
+            return false
+        end
+
+        local gameHandler
+        pcall(function()
+            gameHandler = require(rep.Modules.HandlerLoader.GameHandler)
+        end)
+        local started = waitFor(id, function()
+            return gameHandler and gameHandler.InGame == true
+        end, 3)
+        if not started then
+            lp:SetAttribute("LocalKickBusy", false)
+            return false
+        end
+        return true
     end
 
     -- ---------- ожидание конца цикла и возврат после гачи ----------
@@ -1654,9 +1751,7 @@ do
                 teleportToKick()
                 waitFor(id, ready, 3)
             elseif ready() then
-                -- удар по полоске (ради Perfect) делай вручную — авто-тап убран,
-                -- он и вызывал вылеты игры
-                if not startKick(id, gui) then
+                if not startKick(id) then
                     status("не удалось начать удар")
                     waitFor(id, function() return false end, 1)
                 end
@@ -1823,6 +1918,18 @@ local SLOT_POSITIONS = {
         Vector3.new(886.146, 21.874, 105.987),
         Vector3.new(890.656, 21.874, 98.175),
         Vector3.new(895.166, 21.874, 90.364),
+        Vector3.new(899.676, 21.874, 82.552),
+        Vector3.new(904.185, 21.874, 74.740),
+        Vector3.new(866.946, 41.824, 53.240),
+        Vector3.new(862.436, 41.824, 61.052),
+        Vector3.new(857.926, 41.824, 68.864),
+        Vector3.new(853.416, 41.824, 76.675),
+        Vector3.new(848.906, 41.824, 84.487),
+        Vector3.new(886.146, 41.824, 105.987),
+        Vector3.new(890.656, 41.824, 98.175),
+        Vector3.new(895.166, 41.824, 90.364),
+        Vector3.new(899.676, 41.824, 82.552),
+        Vector3.new(904.185, 41.824, 74.740),
     },
     ["Plot6"] = {
         Vector3.new(975.337, 3.300, 209.700),
@@ -1877,12 +1984,27 @@ local function getOwnPlotName()
     return nil
 end
 
+local function getOwnPlotModel()
+    local ok, service = pcall(function()
+        return require(
+            game:GetService("ReplicatedStorage").Modules.ServicesLoader.ClientPlotService
+        )
+    end)
+    if not ok or not service then return nil end
+    if not service.Model and service.ModelAdded then
+        pcall(function() service.ModelAdded:Wait() end)
+    end
+    return service.Model
+end
+
 local function findFirst(root, ...)
     local names = { ... }
-    local cur = root
+    local current = root
     for _, name in ipairs(names) do
-        cur = cur and cur:FindFirstChild(name)
+        current = current and current:FindFirstChild(name)
     end
+    return current
+end
 
 -- ============================================================
 -- ФЕРМА: DAILY QUEST / AUTO COLLECT / AUTO UPGRADE
@@ -1891,17 +2013,16 @@ local Network
 
 local function getNetwork()
     if Network then return Network end
-    local ok, n = pcall(function()
+    local ok, network = pcall(function()
         return game:GetService("ReplicatedStorage")
             :WaitForChild("Shared", 5)
             :WaitForChild("Packages", 5)
             :WaitForChild("Network", 5)
     end)
-    if ok then Network = n end
+    if ok then Network = network end
     return Network
 end
 
--- общий каркас для тумблеров вида "пока включено — повторять действие"
 local function makeLoopToggle(label, action, interval)
     local active, token = false, 0
     return {
@@ -1909,143 +2030,117 @@ local function makeLoopToggle(label, action, interval)
             active = state
             token = token + 1
             local id = token
-            if state then
-                task.spawn(function()
-                    while active and token == id do
-                        local ok, err = pcall(action)
-                        if not ok then
-                            print("[Sakura] " .. label .. " error: " .. tostring(err))
-                        end
-                        task.wait(interval)
+            if not state then return end
+            task.spawn(function()
+                while active and token == id do
+                    local ok, err = pcall(action)
+                    if not ok then
+                        print("[Sakura] " .. label .. " error: " .. tostring(err))
                     end
-                end)
-            end
+                    task.wait(interval)
+                end
+            end)
         end,
     }
 end
 
--- обновляет квесты и забирает только те, что реально готовы (читает
--- Claim.Interactable и Title у живого UI игры, а не бьёт вслепую по именам)
+local dailyQuestPacket
+local dailyQuestListenerAttached = false
+
+local function getAvailableKicksQuest()
+    local quests = dailyQuestPacket and dailyQuestPacket.Quests
+    if type(quests) ~= "table" then return nil end
+    for _, quest in pairs(quests) do
+        local id = tostring(quest.Id or quest.Key or "")
+        local current = tonumber(quest.Current) or 0
+        local target = tonumber(quest.Target) or math.huge
+        if string.lower(id) == "kicks" and current >= target and not quest.Claimed then
+            return quest.Id or quest.Key
+        end
+    end
+end
+
 local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
     local net = getNetwork()
     if not net then return end
-
-    local ok = pcall(function()
-        net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
-    end)
-    if not ok then return end
-    task.wait(0.5)
-
-    local pg = Players.LocalPlayer:FindFirstChild("PlayerGui")
-    local scroller = findFirst(pg, "Frames", "QuestsNew", "Content", "DailyQuests", "Holder", "Scroller")
-    if not scroller then
-        print("[Sakura] Auto Collect Quest: панель квестов не найдена")
-        return
+    if not dailyQuestListenerAttached then
+        dailyQuestListenerAttached = true
+        net:WaitForChild("rev_DailyQuests_Update", 5).OnClientEvent:Connect(function(packet)
+            dailyQuestPacket = packet
+        end)
     end
-
-    local claimEv = net:WaitForChild("rev_DailyQuests_Claim", 5)
-    for _, quest in ipairs(scroller:GetChildren()) do
-        local main = quest:FindFirstChild("MainHolder")
-        local claimBtn = main and main:FindFirstChild("Claim")
-        local title = main and main:FindFirstChild("Title")
-
-        if claimBtn and title and claimBtn.Interactable then
-            local name = title.Text
-            local ok2, err = pcall(function() claimEv:FireServer(name) end)
-            if ok2 then
-                print("[Sakura] Auto Collect Quest: забрал " .. tostring(name))
-            else
-                print("[Sakura] Auto Collect Quest error: " .. tostring(err))
-            end
-            task.wait(0.2)
-        end
+    net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
+    local started = os.clock()
+    while os.clock() - started < 2 do
+        if getAvailableKicksQuest() then break end
+        task.wait(0.1)
     end
-end, 30)
+    local questId = getAvailableKicksQuest()
+    if questId then
+        net:WaitForChild("rev_DailyQuests_Claim", 5):FireServer(questId)
+    end
+end, 15)
 
--- определяет свой плот через ClientPlotService и телепортирует к его двери
--- (координата из BASE_POSITIONS)
 local function teleportToOwnPlot()
-    local name = getOwnPlotName()
-    local pos = name and BASE_POSITIONS[name]
+    local plot = getOwnPlotModel()
     local char = Players.LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not (pos and root) then return false end
-
-    root.CFrame = CFrame.new(pos) + Vector3.new(0, 4, 0)
+    if not (plot and root) then return false end
+    root.CFrame = plot:GetPivot() + Vector3.new(0, 4, 0)
     return true
 end
 
--- ищет рядом с точкой стенда более точную цель (зелёный пад сбора) и определяет,
--- есть ли там вообще Uma — эвристика по ближайшим инстансам, т.к. точных
--- имён/тегов зелёного пада и "пустого" состояния в дампе нет
-local SLOT_DEBUG = false -- поставь true, чтобы в консоли видеть, что нашлось рядом со слотом
+local function getAllPlotSlotRecords()
+    local plot = getOwnPlotModel()
+    local slotsFolder = plot and plot:FindFirstChild("Slots")
+    local buttons = plot and plot:FindFirstChild("Buttons")
+    if not (slotsFolder and buttons) then return {} end
 
-local function inspectSlot(pos)
-    local char = Players.LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return nil, false end
-
-    root.CFrame = CFrame.new(pos) + Vector3.new(0, 4, 0)
-    task.wait(0.12)
-
-    local nearby = workspace:GetPartBoundsInRadius(pos, 10)
-    local target, occupied = pos, false
-    local nonStaticCount = 0
-
-    for _, part in ipairs(nearby) do
-        local lname = string.lower(part.Name)
-
-        if string.find(lname, "collect") or string.find(lname, "cash") or string.find(lname, "money") then
-            target = part.Position
-        end
-
-        local prompt = part:FindFirstChildOfClass("ProximityPrompt")
-        if prompt and prompt.Enabled then
-            occupied = true
-        end
-
-        if not (string.find(lname, "stand") or string.find(lname, "slot") or string.find(lname, "plot")
-            or string.find(lname, "platform") or string.find(lname, "pad") or string.find(lname, "base")) then
-            nonStaticCount = nonStaticCount + 1
+    local slots = {}
+    for _, slot in ipairs(slotsFolder:GetChildren()) do
+        local index = tonumber(string.match(slot.Name, "%d+"))
+        if index then
+            table.insert(slots, {
+                index = index,
+                slot = slot,
+                uma = slot:FindFirstChildOfClass("Part"),
+                button = buttons:FindFirstChild("Slot" .. index),
+            })
         end
     end
-
-    if not occupied and nonStaticCount > 2 then
-        occupied = true
-    end
-
-    if SLOT_DEBUG then
-        local names = {}
-        for _, part in ipairs(nearby) do names[#names + 1] = part.Name end
-        print(("[Sakura] slot debug @%s | occupied=%s | nearby: %s"):format(
-            tostring(pos), tostring(occupied), table.concat(names, ", ")))
-    end
-
-    return target, occupied
+    table.sort(slots, function(a, b) return a.index < b.index end)
+    return slots
 end
 
--- проходит по всем слотам своего плота, вызывая fn(index) только там, где
--- эвристика видит Uma; teleport делает сама inspectSlot
-local function forEachOccupiedSlot(label, fn)
-    local name = getOwnPlotName()
-    local slots = name and SLOT_POSITIONS[name]
-    if not slots then
-        print("[Sakura] " .. label .. ": свой плот не определён")
+local function getOccupiedPlotSlots()
+    local occupied = {}
+    for _, slot in ipairs(getAllPlotSlotRecords()) do
+        if slot.uma then table.insert(occupied, slot) end
+    end
+    return occupied
+end
+
+local function hasCashToCollect(uma)
+    local function hasAmount(instance)
+        return (tonumber(instance:GetAttribute("Coins")) or 0) > 0
+            or (tonumber(instance:GetAttribute("OfflineCoins")) or 0) > 0
+    end
+    if hasAmount(uma) then return true end
+    for _, descendant in ipairs(uma:GetDescendants()) do
+        if hasAmount(descendant) then return true end
+    end
+    return false
+end
+
+local function forEachOccupiedSlot(label, callback)
+    local slots = getOccupiedPlotSlots()
+    if #slots == 0 then
+        print("[Sakura] " .. label .. ": занятые слоты не найдены")
         return
     end
-
-    for i, pos in ipairs(slots) do
-        local target, occupied = inspectSlot(pos)
-        if occupied then
-            if target ~= pos then
-                local char = Players.LocalPlayer.Character
-                local root = char and char:FindFirstChild("HumanoidRootPart")
-                if root then root.CFrame = CFrame.new(target) + Vector3.new(0, 3, 0) end
-                task.wait(0.05)
-            end
-            fn(i)
-            task.wait(0.05)
-        end
+    for _, slot in ipairs(slots) do
+        callback(slot.index, slot.uma, slot.button)
+        task.wait(0.05)
     end
 end
 
@@ -2053,7 +2148,14 @@ local AutoCollectHandlers = makeLoopToggle("Auto Collect Cash", function()
     local net = getNetwork()
     if not net then return end
     local ev = net:WaitForChild("rev_B_Collect", 5)
-    forEachOccupiedSlot("Auto Collect Cash", function(i)
+    forEachOccupiedSlot("Auto Collect Cash", function(i, uma, button)
+        if not button or not hasCashToCollect(uma) then return end
+        local char = Players.LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CFrame = button.CFrame + Vector3.new(0, 3, 0)
+            task.wait(0.1)
+        end
         ev:FireServer(i)
     end)
 end, 3)
@@ -2064,10 +2166,30 @@ local SpeedUpgradeAmount = { value = savedAmounts.speed or 1 }
 
 -- деньги игрока (leaderstats.Cash) — нужно, чтобы понимать, когда апгрейды
 -- перестали быть по карману
-local function getCash()
-    local ls = Players.LocalPlayer:FindFirstChild("leaderstats")
-    local cash = ls and ls:FindFirstChild("Cash")
-    return cash and cash.Value
+local function getMaxAffordableSpeedUpgrades()
+    local okBalance, balanceService = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.ClientBalanceService)
+    end)
+    local okSpeed, speedService = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.SpeedServiceClient)
+    end)
+    local okData, speedData = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Shared.Data.SpeedData)
+    end)
+    local okMath, infiniteMath = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Shared.Utility.InfiniteMath)
+    end)
+    if not (okBalance and okSpeed and okData and okMath) then return 0 end
+
+    local count = 0
+    local spent = infiniteMath.new(0)
+    while count < 1000 do
+        local cost = speedData:GetCostForLevel(speedService.Level + count + 1)
+        if not cost or balanceService.Balance < spent + cost then break end
+        spent = spent + cost
+        count = count + 1
+    end
+    return count
 end
 
 -- один проход по всем занятым слотам плота с апгрейдом каждой Uma
@@ -2082,6 +2204,7 @@ end
 
 -- по очереди прокачивает каждую доступную Uma (слоты 1-30, пропуская пустые)
 local AutoUpgradeState = { enabled = false }
+local AutoSpeedState = { enabled = false }
 local AutoUpgradeHandlers
 do
     local active, token = false, 0
@@ -2095,9 +2218,11 @@ do
 
             task.spawn(function()
                 while active and token == id do
-                    local ok, err = pcall(runUmaUpgradePass)
-                    if not ok then
-                        print("[Sakura] Auto Upgrade Umas error: " .. tostring(err))
+                    if not AutoSpeedState.enabled then
+                        local ok, err = pcall(runUmaUpgradePass)
+                        if not ok then
+                            print("[Sakura] Auto Upgrade Umas error: " .. tostring(err))
+                        end
                     end
                     task.wait(3)
                 end
@@ -2114,6 +2239,7 @@ do
     SpeedUpgradeHandlers = {
         onToggle = function(state)
             active = state
+            AutoSpeedState.enabled = state
             token = token + 1
             local id = token
             if not state then return end
@@ -2121,32 +2247,14 @@ do
             task.spawn(function()
                 local net = getNetwork()
                 if not net then return end
-                local ev = net:WaitForChild("rev_SPEED_UPGRADE", 5)
-
                 while active and token == id do
                     if AutoUpgradeState.enabled then
                         pcall(runUmaUpgradePass)
                     end
-
-                    local lastCash = getCash()
-                    local stable = 0
-
-                    while active and token == id do
-                        local ok = pcall(function() ev:FireServer(1) end)
-                        if not ok then break end
-                        task.wait(0.15)
-
-                        local cash = getCash()
-                        if cash == nil or (lastCash and cash >= lastCash) then
-                            stable = stable + 1
-                        else
-                            stable = 0
-                        end
-                        lastCash = cash
-
-                        if stable >= 3 then break end
+                    local amount = getMaxAffordableSpeedUpgrades()
+                    if amount > 0 then
+                        net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(amount)
                     end
-
                     task.wait(2)
                 end
             end)
@@ -2154,71 +2262,116 @@ do
     }
 end
 
--- берёт первый предмет инвентаря (Tool в Backpack) и жмёт тренировку веса
-local function getFirstInventoryTool()
-    local lp = Players.LocalPlayer
-    local backpack = lp:FindFirstChild("Backpack")
-    if backpack then
-        local tool = backpack:FindFirstChildOfClass("Tool")
-        if tool then return tool end
-    end
-    local char = lp.Character
-    return char and char:FindFirstChildOfClass("Tool")
+local function isUmaTool(tool)
+    if not (tool and tool:IsA("Tool")) then return false end
+    local ok, entities = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Shared.Data.EntitiesData)
+    end)
+    return ok and entities.Brainrots[tool.Name] ~= nil
 end
 
--- берёт первый предмет один раз при включении, дальше только жмёт тренировку
+local function getEquippedWeightTool()
+    local lp = Players.LocalPlayer
+    local ok, weightService = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.WeightServiceClient)
+    end)
+    if not ok or not weightService then return nil end
+
+    local equippedName = weightService.Equipped
+    if type(equippedName) ~= "string" then return nil end
+
+    local char = lp.Character
+    local equipped = char and char:FindFirstChild(equippedName)
+    if equipped and equipped:IsA("Tool") then return equipped end
+
+    local backpack = lp:FindFirstChild("Backpack")
+    local tool = backpack and backpack:FindFirstChild(equippedName)
+    return tool and tool:IsA("Tool") and tool or nil
+end
+
 local AutoTrainingHandlers
 do
     local active, token = false, 0
+    local bonusConnection
     AutoTrainingHandlers = {
         onToggle = function(state)
             active = state
             token = token + 1
             local id = token
+            if bonusConnection then
+                bonusConnection:Disconnect()
+                bonusConnection = nil
+            end
             if not state then return end
 
             task.spawn(function()
                 local net = getNetwork()
                 if not net then return end
+                local bonusEvent = net:WaitForChild("rev_TaviMishkal", 5)
+                bonusConnection = bonusEvent.OnClientEvent:Connect(function(multiplier)
+                    if not active or token ~= id then return end
+                    if multiplier ~= 2 and multiplier ~= 5 and multiplier ~= 10 then return end
+                    task.delay(0.15, function()
+                        if active and token == id then
+                            pcall(function() bonusEvent:FireServer() end)
+                        end
+                    end)
+                end)
 
-                local tool = getFirstInventoryTool()
-                local hum = getHumanoid()
-                if tool and hum then
-                    hum:EquipTool(tool)
-                    task.wait(0.2)
-                end
-
-                local ev = net:WaitForChild("rev_TaviMishkal", 5)
                 while active and token == id do
-                    local ok, err = pcall(function() ev:FireServer() end)
-                    if not ok then
-                        print("[Sakura] Auto Training Weight error: " .. tostring(err))
+                    local tool = getEquippedWeightTool()
+                    local hum = getHumanoid()
+                    local backpack = Players.LocalPlayer:FindFirstChild("Backpack")
+                    if tool and hum and tool.Parent == backpack
+                        and Players.LocalPlayer:GetAttribute("LocalKickBusy") ~= true then
+                        hum:EquipTool(tool)
                     end
-                    task.wait(1)
+                    task.wait(2)
                 end
             end)
         end,
     }
 end
 
--- продаёт всех Um одним вызовом (InvokeServer, не FireServer)
+-- продаёт каждую Uma через тот же запрос, что и продажа удерживаемой Uma
 local SellAllHandlers = makeLoopToggle("Sell All Umas", function()
     local net = getNetwork()
     if not net then return end
-    net:WaitForChild("ref_B_SellAll", 5):InvokeServer()
-end, 5)
+    local backpack = Players.LocalPlayer:FindFirstChild("Backpack")
+    local hum = getHumanoid()
+    if not (backpack and hum) then return end
 
--- забирает офлайн-накопление
-local AutoOfflineClaimHandlers = makeLoopToggle("Auto Offline Claim", function()
-    local net = getNetwork()
-    if not net then return end
-    net:WaitForChild("rev_Offline_Claim", 5):FireServer()
-end, 60)
+    local tools = {}
+    for _, child in ipairs(backpack:GetChildren()) do
+        if isUmaTool(child) then table.insert(tools, child) end
+    end
+    local character = Players.LocalPlayer.Character
+    local heldTool = character and character:FindFirstChildOfClass("Tool")
+    if isUmaTool(heldTool) then table.insert(tools, heldTool) end
+    local sell = net:WaitForChild("ref_B_Sell", 5)
+    for _, tool in ipairs(tools) do
+        if not tool.Parent then continue end
+        hum:EquipTool(tool)
+        task.wait(0.2)
+        local ok, err = pcall(function() sell:InvokeServer() end)
+        if not ok then
+            print("[Sakura] Sell All Umas error: " .. tostring(err))
+            return
+        end
+        task.wait(0.35)
+    end
+end, 5)
 
 -- продаёт Uma, которую держит игрок
 local function sellHeldUma()
     local net = getNetwork()
     if not net then return end
+    local char = Players.LocalPlayer.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    if not isUmaTool(tool) then
+        print("[Sakura] Sell Uma: Uma не экипирована")
+        return
+    end
 
     local ok, err = pcall(function()
         net:WaitForChild("ref_B_Sell", 5):InvokeServer()
@@ -2229,8 +2382,7 @@ local function sellHeldUma()
 end
 
 -- ============================================================
--- AUTO PLAY (черновая версия, см. пояснение в чате — часть логики
--- не проверена и требует уточнения от тебя)
+-- AUTO PLAY
 -- ============================================================
 local AutoPlayHandlers
 do
@@ -2244,58 +2396,152 @@ do
     end
 
     local function countHeldUmas()
+        local count = 0
         local lp = Players.LocalPlayer
-        local n = 0
-        local bp = lp:FindFirstChild("Backpack")
-        if bp then
-            for _, t in ipairs(bp:GetChildren()) do
-                if t:IsA("Tool") then n = n + 1 end
+        for _, container in ipairs({ lp:FindFirstChild("Backpack"), lp.Character }) do
+            if container then
+                for _, tool in ipairs(container:GetChildren()) do
+                    if isUmaTool(tool) then count = count + 1 end
+                end
             end
         end
-        local char = lp.Character
-        if char and char:FindFirstChildOfClass("Tool") then n = n + 1 end
-        return n
+        return count
     end
 
-    local function interact(actionId)
+    local function getUmaTools()
+        local tools = {}
+        local lp = Players.LocalPlayer
+        for _, container in ipairs({ lp:FindFirstChild("Backpack"), lp.Character }) do
+            if container then
+                for _, tool in ipairs(container:GetChildren()) do
+                    if isUmaTool(tool) then table.insert(tools, tool) end
+                end
+            end
+        end
+        return tools
+    end
+
+    local function interact(slotIndex)
         local net = getNetwork()
         if not net then return false end
         return pcall(function()
-            net:WaitForChild("rev_S_Interact", 5):FireServer(actionId)
+            net:WaitForChild("rev_S_Interact", 5):FireServer(slotIndex)
         end)
     end
 
-    -- ставит держимую Uma в первый свободный слот; если все заняты — в
-    -- последний доступный (нет данных, какая Uma наименее прибыльна —
-    -- см. пояснение в чате)
-    local function placeHeldUma()
-        local name = getOwnPlotName()
-        local slots = name and SLOT_POSITIONS[name]
-        if not slots then return false end
+    local function getUmaIncome(uma)
+        local entityData
+        pcall(function()
+            entityData = require(game:GetService("ReplicatedStorage").Shared.Data.EntitiesData)
+        end)
+        local function numeric(value)
+            if type(value) == "number" then return value end
+            if type(value) == "table" then
+                if type(value.toNumber) == "function" then
+                    local ok, result = pcall(function() return value:toNumber() end)
+                    if ok and tonumber(result) then return tonumber(result) end
+                end
+                local first = tonumber(value.first)
+                local second = tonumber(value.second) or 0
+                if first then return first * (10 ^ second) end
+                return tonumber(value.value) or tonumber(value[1])
+            end
+            return tonumber(value)
+        end
 
-        local targetPos
-        for _, pos in ipairs(slots) do
-            local _, occupied = inspectSlot(pos)
-            if not occupied then
-                targetPos = pos
-                break
+        local score = tonumber(uma:GetAttribute("CoinsPerSecond"))
+            or tonumber(uma:GetAttribute("CPS"))
+            or tonumber(uma:GetAttribute("Income"))
+        local level = tonumber(uma:GetAttribute("Level")) or 1
+        if entityData then
+            for _, descendant in ipairs(uma:GetDescendants()) do
+                local data = entityData.Brainrots[descendant.Name]
+                if data then
+                    score = score or numeric(data.CPS)
+                    level = tonumber(descendant:GetAttribute("Level")) or level
+                    break
+                end
             end
         end
-        if not targetPos then
-            targetPos = slots[#slots]
-        end
-
-        local char = Players.LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if root then root.CFrame = CFrame.new(targetPos) + Vector3.new(0, 3, 0) end
-        task.wait(0.2)
-
-        return interact(23)
+        return (score or 0) * (1.25 ^ math.max(0, level - 1))
     end
 
-    -- следит за приближением ребитха (формула из дампа: требование =
-    -- 10^(RebirthLevel+3)) и прячет держимую Uma в storage чуть заранее;
-    -- после факта ребитха (сигнал RebirthResult) забирает всё обратно
+    local function moveToSlot(slot)
+        local char = Players.LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root and slot.slot:IsA("BasePart") then
+            root.CFrame = slot.slot.CFrame + Vector3.new(0, 3, 0)
+        end
+        task.wait(0.2)
+    end
+
+    local function sortPlotSlots()
+        local slots = getAllPlotSlotRecords()
+        for index = 1, #slots do
+            local best = nil
+            for candidate = index, #slots do
+                local slot = slots[candidate]
+                if slot.uma and (not best or getUmaIncome(slot.uma) > getUmaIncome(slots[best].uma)) then
+                    best = candidate
+                end
+            end
+
+            if best and best ~= index then
+                if slots[index].uma then
+                    moveToSlot(slots[index])
+                    if not interact(slots[index].index) then return false end
+                    task.wait(0.35)
+                end
+                moveToSlot(slots[best])
+                if not interact(slots[best].index) then return false end
+                task.wait(0.35)
+                moveToSlot(slots[index])
+                if not interact(slots[index].index) then return false end
+                task.wait(0.35)
+                slots[index], slots[best] = slots[best], slots[index]
+            end
+        end
+        return true
+    end
+
+    local function replaceLowestIncomeUma(newTool)
+        local slots = getAllPlotSlotRecords()
+        local target
+        for _, slot in ipairs(slots) do
+            if not slot.uma then target = slot break end
+        end
+        if not target then
+            for _, slot in ipairs(slots) do
+                if slot.uma and (not target or getUmaIncome(slot.uma) < getUmaIncome(target.uma)) then
+                    target = slot
+                end
+            end
+        end
+        if not target then return false end
+        if target.uma and getUmaIncome(newTool) <= getUmaIncome(target.uma) then
+            return false
+        end
+
+        moveToSlot(target)
+        if target.uma then
+            if not interact(target.index) then return false end
+            task.wait(0.35)
+        end
+
+        local hum = getHumanoid()
+        local char = Players.LocalPlayer.Character
+        local backpack = Players.LocalPlayer:FindFirstChild("Backpack")
+        if not (hum and char and backpack and (newTool.Parent == backpack or newTool.Parent == char)) then
+            return false
+        end
+        if newTool.Parent == backpack then hum:EquipTool(newTool) end
+        task.wait(0.2)
+        local placed = interact(target.index)
+        task.wait(0.35)
+        if placed then sortPlotSlots() end
+        return placed
+    end
+
     local function startRebirthWatch(id)
         local ok, rebirthSvc = pcall(function()
             return require(
@@ -2303,74 +2549,188 @@ do
             )
         end)
         if not ok then
-            print("[Sakura] Auto Play: RebirthServiceClient не найден — авто-storage перед ребитхом отключён")
             return
         end
 
-        task.spawn(function()
-            local net = getNetwork()
-            if not net then return end
-            local storageEv = net:WaitForChild("ref_UmaStorage_Request", 10)
-            local stored = false
+        local net = getNetwork()
+        if not net then return end
+        local storageEv = net:WaitForChild("ref_UmaStorage_Request", 10)
+        local rebirthData
+        local kickService
+        pcall(function()
+            local rep = game:GetService("ReplicatedStorage")
+            rebirthData = require(rep.Shared.Data.RebirthData)
+            kickService = require(rep.Modules.ServicesLoader.KickServiceClient)
+        end)
+        if not (rebirthData and kickService) then return end
 
-            while active and token == id do
-                local kp = Players.LocalPlayer:GetAttribute("SelectedKickPower") or 0
-                local req = 10 ^ (rebirthSvc.RebirthLevel + 3)
+        local storedItems = {}
+        local function storageRequest(action, value)
+            local callOk, accepted, message, response, payload = pcall(function()
+                return storageEv:InvokeServer(action, value)
+            end)
+            if not callOk or accepted == false then return false, nil end
+            local data = type(payload) == "table" and payload
+                or type(response) == "table" and response
+                or type(accepted) == "table" and accepted
+                or nil
+            return true, data
+        end
 
-                if not stored and kp >= req * 0.9 then
-                    local ok2 = pcall(function() storageEv:InvokeServer("StoreHeld") end)
-                    if ok2 then
-                        stored = true
-                        print("[Sakura] Auto Play: подхожу к ребитху, попробовал спрятать держимую Uma в storage")
+        local function getStorageList()
+            local okList, data = storageRequest("List", nil)
+            return okList and data and data.Items and data or nil
+        end
+
+        local function storeTopUmas()
+            local data = getStorageList()
+            if not data then return false end
+            local items = data.Items
+            local capacity = tonumber(data.Capacity) or #items
+            local room = math.max(0, capacity - #items)
+            if room == 0 then return false end
+
+            local candidates = getOccupiedPlotSlots()
+            table.sort(candidates, function(a, b)
+                return getUmaIncome(a.uma) > getUmaIncome(b.uma)
+            end)
+            local known = {}
+            for _, item in ipairs(items) do known[item.UID] = true end
+
+            for _, candidate in ipairs(candidates) do
+                if room <= 0 or #storedItems >= 2 then break end
+                local okPick = interact(candidate.index)
+                if okPick then
+                    task.wait(0.35)
+                    local char = Players.LocalPlayer.Character
+                    local held = char and char:FindFirstChildOfClass("Tool")
+                    if isUmaTool(held) then
+                        local okStore = storageRequest("StoreHeld", nil)
+                        task.wait(0.25)
+                        local updated = getStorageList()
+                        if okStore and updated then
+                            for _, item in ipairs(updated.Items) do
+                                if item.UID and not known[item.UID] then
+                                    known[item.UID] = true
+                                    table.insert(storedItems, {
+                                        uid = item.UID,
+                                        slot = candidate.index,
+                                    })
+                                    room = room - 1
+                                    break
+                                end
+                            end
+                        end
                     end
                 end
+            end
+            return #storedItems > 0
+        end
 
-                task.wait(2)
+        local function restoreStoredUmas()
+            if #storedItems == 0 then return end
+            AutoTrainingHandlers.onToggle(false)
+            for _, item in ipairs(storedItems) do
+                local known = {}
+                for _, tool in ipairs(getUmaTools()) do known[tool] = true end
+                local okWithdraw = storageRequest("Withdraw", item.uid)
+                if okWithdraw then
+                    local tool
+                    for _ = 1, 10 do
+                        task.wait(0.25)
+                        for _, candidate in ipairs(getUmaTools()) do
+                            if not known[candidate] then
+                                tool = candidate
+                                break
+                            end
+                        end
+                        if tool then break end
+                    end
+
+                    if tool then
+                        local slots = getAllPlotSlotRecords()
+                        local target
+                        for _, slot in ipairs(slots) do
+                            if slot.index == item.slot then target = slot break end
+                        end
+                        if not target then
+                            for _, slot in ipairs(slots) do
+                                if not slot.uma then target = slot break end
+                            end
+                        end
+                        if target then
+                            if target.uma then
+                                interact(target.index)
+                                task.wait(0.35)
+                            end
+                            local hum = getHumanoid()
+                            local backpack = Players.LocalPlayer:FindFirstChild("Backpack")
+                            if hum and backpack and tool.Parent == backpack then
+                                hum:EquipTool(tool)
+                                task.wait(0.2)
+                                interact(target.index)
+                                task.wait(0.35)
+                            end
+                        end
+                    end
+                end
+            end
+            table.clear(storedItems)
+            AutoTrainingHandlers.onToggle(true)
+        end
+
+        local observedLevel = rebirthSvc.RebirthLevel
+        local rebirthConnection = rebirthSvc.RebirthChanged:Connect(function(level)
+            if not (active and token == id) then return end
+            if level > observedLevel then
+                observedLevel = level
+                task.delay(1, restoreStoredUmas)
             end
         end)
 
-        pcall(function()
-            rebirthSvc.RebirthResult:Connect(function()
-                if not (active and token == id) then return end
-                task.spawn(function()
-                    task.wait(1)
-                    local net = getNetwork()
-                    if not net then return end
-                    local storageEv = net:WaitForChild("ref_UmaStorage_Request", 5)
-
-                    local ok, _, _, data = pcall(function()
-                        return storageEv:InvokeServer("List")
-                    end)
-                    if ok and data and data.Items then
-                        for _, item in ipairs(data.Items) do
-                            pcall(function() storageEv:InvokeServer("Withdraw", item.UID) end)
-                            task.wait(0.2)
-                        end
-                        print("[Sakura] Auto Play: ребитх произошёл, забрал всё из storage")
-                    end
-                end)
-            end)
+        task.spawn(function()
+            local prepared = false
+            while active and token == id do
+                local requirement = rebirthData:GetKickRequirement(rebirthSvc.RebirthLevel + 1)
+                if not prepared and kickService.Level >= requirement * 0.9 then
+                    AutoTrainingHandlers.onToggle(false)
+                    prepared = storeTopUmas()
+                    AutoTrainingHandlers.onToggle(true)
+                end
+                task.wait(2)
+            end
+            rebirthConnection:Disconnect()
         end)
     end
 
     local function loop(id)
         startRebirthWatch(id)
+        KickHandlers.onToggle(false)
+        AutoTrainingHandlers.onToggle(false)
+        sortPlotSlots()
         setKick(true)
-
-        local lastCount = countHeldUmas()
+        AutoTrainingHandlers.onToggle(true)
+        local knownTools = {}
+        for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
 
         while active and token == id do
             local n = countHeldUmas()
             setKick(n < 24)
-
-            if n > lastCount then
-                task.wait(0.3)
-                if interact(21) then
-                    task.wait(0.3)
-                    placeHeldUma()
+            local newTool
+            for _, tool in ipairs(getUmaTools()) do
+                if not knownTools[tool] then
+                    newTool = tool
+                    break
                 end
             end
-            lastCount = countHeldUmas()
+            if newTool then
+                task.wait(0.3)
+                replaceLowestIncomeUma(newTool)
+                knownTools = {}
+                for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
+            else
+                for _, tool in ipairs(getUmaTools()) do knownTools[tool] = true end
+            end
 
             pcall(runUmaUpgradePass)
 
@@ -2386,6 +2746,7 @@ do
         end
 
         setKick(false)
+        AutoTrainingHandlers.onToggle(false)
     end
 
     AutoPlayHandlers = {
@@ -2452,39 +2813,37 @@ name = "Player",
 funcs = {
 {
 title = "Jump",
-desc = "Сила прыжка 1-100",
 type = "slider",
 handlers = JumpHandlers
 },
 {
 title = "Fly",
-desc = "Полёт по направлению камеры",
 handlers = FlyHandlers
 },
 {
 title = "Speed",
-desc = "Скорость передвижения 1-100",
 type = "slider",
 handlers = SpeedHandlers
 },
 {
 title = "Select Speed Upgrade Amount",
-desc = "Ввести число — прокачает разово",
 type = "amount",
-onApply = function(v)
-    SpeedUpgradeAmount.value = v
-    saveField("upgrade_amounts", "speed", v)
+onApply = function(value)
+    SpeedUpgradeAmount.value = value
+    saveField("upgrade_amounts", "speed", value)
     local net = getNetwork()
-    if not net then return end
-    local ok, err = pcall(function()
-        net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(v)
-    end)
-    if not ok then print("[Sakura] Speed Upgrade Amount error: " .. tostring(err)) end
+    if net then
+        local ok, err = pcall(function()
+            net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(value)
+        end)
+        if not ok then
+            print("[Sakura] Speed Upgrade Amount error: " .. tostring(err))
+        end
+    end
 end,
 },
 {
 title = "Sell Uma",
-desc = "Продать Uma в руках (проверь вызов)",
 type = "action",
 onClick = sellHeldUma,
 },
@@ -2524,38 +2883,25 @@ onClick = sellHeldUma,
             handlers = SellAllHandlers
         },
         {
-            title = "Auto Offline Claim",
-            handlers = AutoOfflineClaimHandlers
-        },
-        {
             title = "Auto Play",
             handlers = AutoPlayHandlers
         },
-    }  
-},  
-
-{  
-    id = "misc",  
-    name = "Misc",  
-    funcs = {  
-        {
-            title = "Set Music",
-            type = "music"
-        },
-        {
-            title = "Find Music",
-            type = "musicsearch"
-        },
-    }  
-},  
-
+    },
+},
+{
+    id = "misc",
+    name = "Misc",
+    funcs = {
+        { title = "Set Music", type = "music" },
+        { title = "Find Music", type = "musicsearch" },
+    },
+},
 {
     id = "teleport",
     name = "Teleport",
     funcs = {
         {
             title = "Teleport To Base",
-            desc = "На свой плот",
             type = "action",
             onClick = function()
                 if not teleportToOwnPlot() then
@@ -2563,15 +2909,9 @@ onClick = sellHeldUma,
                 end
             end,
         },
-        {
-            title = "Teleport to Sell",
-            desc = "К NPC продажи",
-            type = "action",
-            onClick = teleportToSell,
-        },
+        { title = "Teleport to Sell", type = "action", onClick = teleportToSell },
         {
             title = "Teleport to Kick Station",
-            desc = "В зону удара",
             type = "action",
             onClick = function()
                 if not teleportToKick() then
@@ -2579,30 +2919,17 @@ onClick = sellHeldUma,
                 end
             end,
         },
-        {
-            title = "Teleport to Shop",
-            desc = "К магазину",
-            type = "action",
-            onClick = teleportToShop,
-        },
-    }
+        { title = "Teleport to Shop", type = "action", onClick = teleportToShop },
+    },
 },
-
-{  
-    id = "settings",  
-    name = "Settings",  
-    funcs = {}  
+{
+    id = "settings",
+    name = "Settings",
+    funcs = {},
 },
-
 }
 
 local pages = {}
-local tabButtons = {}
-
-local sidebarCollapsed = false
-local activeTab = TABS[1].id
-
-if PlayerGui:FindFirstChild(
 "SakuraMenu"
 ) then
 PlayerGui.SakuraMenu:Destroy()
@@ -2654,25 +2981,41 @@ CONFIG.AccentColor,
 1
 )
 
--- Liquid Glass: размытие фона позади меню (эффект "матового стекла")
 local LiquidGlass = { enabled = SavedState.controls["settings_liquidglass"] and SavedState.controls["settings_liquidglass"].on or false }
+local legacyBlur = game:GetService("Lighting"):FindFirstChild("SakuraGlassBlur")
+if legacyBlur then legacyBlur:Destroy() end
+local glassSurface = newFrame({
+    Name = "GlassSurface",
+    Size = UDim2.fromScale(1, 1),
+    BackgroundColor3 = Color3.fromRGB(196, 218, 222),
+    BackgroundTransparency = 0.88,
+    Visible = LiquidGlass.enabled,
+    ZIndex = 1,
+}, MainFrame)
+corner(16, glassSurface)
+local glassGradient = Instance.new("UIGradient")
+glassGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(236, 247, 248)),
+    ColorSequenceKeypoint.new(0.48, Color3.fromRGB(153, 190, 198)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(222, 236, 236)),
+})
+glassGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.18),
+    NumberSequenceKeypoint.new(0.52, 0.62),
+    NumberSequenceKeypoint.new(1, 0.28),
+})
+glassGradient.Rotation = 35
+glassGradient.Parent = glassSurface
+stroke(glassSurface, Color3.fromRGB(239, 250, 250), 0.52, 1)
 
 local function refreshBlur()
-    local lighting = game:GetService("Lighting")
-    local blur = lighting:FindFirstChild("SakuraGlassBlur")
-    local want = LiquidGlass.enabled and MainFrame.Visible
-
-    if want then
-        if not blur then
-            blur = Instance.new("BlurEffect")
-            blur.Name = "SakuraGlassBlur"
-            blur.Size = 0
-            blur.Parent = lighting
-        end
-        tween(blur, 0.3, { Size = 14 })
-    elseif blur then
-        tween(blur, 0.3, { Size = 0 })
-    end
+    glassSurface.Visible = LiquidGlass.enabled
+    MainFrame.BackgroundColor3 = LiquidGlass.enabled
+        and Color3.fromRGB(31, 42, 46)
+        or CONFIG.BgColor
+    MainFrame.BackgroundTransparency = LiquidGlass.enabled
+        and 0.34
+        or CONFIG.Transparency
 end
 
 -- ============================================================
@@ -2695,24 +3038,20 @@ local logoIcon =
 drawIcon(
 "logo",
 logoHolder,
-26
 )
 
 for _, part in ipairs(
 logoIcon:GetChildren()
 ) do
-
 if part:IsA("Frame") then  
     attachShimmer(  
         part,  
         Color3.fromRGB(190, 190, 198),  
-        Color3.fromRGB(255, 255, 255),  
         2.2  
     )  
 end
 
 end
-
 bind(
 RunService.RenderStepped,
 function(dt)
@@ -2722,7 +3061,6 @@ dt * 14) % 360
 end
 )
 
-local sakuraLabel = newLabel({
 Text = "Sakura",
 Position = UDim2.new(0, 52, 0, 0),
 Size = UDim2.new(0, 150, 1, 0),
@@ -2733,13 +3071,11 @@ TextColor3 = CONFIG.SakuraPink,
 }, TopBar)
 
 attachShimmer(
-sakuraLabel,
 CONFIG.SakuraPink,
 Color3.fromRGB(190, 45, 95),
 2.6
 )
 
-local btnClose = newButton({
 Name = "CloseBtn",
 Size = UDim2.fromOffset(30, 30),
 Position = UDim2.new(1, -16, 0.5, 0),
@@ -2748,7 +3084,6 @@ BackgroundColor3 = CONFIG.CardColor,
 }, TopBar)
 
 corner(8, btnClose)
-
 drawCross(
 btnClose,
 12,
@@ -2757,7 +3092,6 @@ CONFIG.CloseColor,
 -45
 )
 
-local btnMinimize = newButton({
 Name = "MinimizeBtn",
 Size = UDim2.fromOffset(30, 30),
 Position = UDim2.new(1, -54, 0.5, 0),
@@ -3342,7 +3676,9 @@ elseif tab.id == "home" then
             speedService = ok and svc or false
         end
 
-        if speedService and speedService.Level then return speedService.Level end
+        if speedService and speedService.DidInit then
+            return speedService.MaxSpeed or speedService.CurrentSpeed
+        end
 
         local lp = Players.LocalPlayer
         local ls = lp:FindFirstChild("leaderstats")
@@ -3355,8 +3691,6 @@ elseif tab.id == "home" then
         return nil
     end
 
-    local debugPrinted = false
-
     local function refreshStats()
         local lp = Players.LocalPlayer
         local ls = lp:FindFirstChild("leaderstats")
@@ -3368,25 +3702,19 @@ elseif tab.id == "home" then
         statLabels["Kick Power"].Text = "Kick Power: " .. (kp and fmt(kp) or "—")
 
         local speedVal = getSpeedValue()
-        statLabels["Speed"].Text = "Speed: " .. (speedVal and tostring(speedVal) or "—")
+        statLabels["Speed"].Text = "Speed: " .. (speedVal and fmt(speedVal) or "—")
 
         local reb = ls and ls:FindFirstChild("Rebirths")
         statLabels["Rebirths"].Text = "Rebirths: " .. (reb and tostring(reb.Value) or "—")
 
-        if not debugPrinted then
-            debugPrinted = true
-            print(("[Sakura] Home debug | SpeedServiceClient.Level=%s | leaderstats.Speed=%s | attr Speed=%s | attr SpeedLevel=%s"):format(
-                tostring(speedService and speedService.Level),
-                tostring(ls and ls:FindFirstChild("Speed") and ls.Speed.Value),
-                tostring(lp:GetAttribute("Speed")),
-                tostring(lp:GetAttribute("SpeedLevel"))
-            ))
-        end
     end
 
     refreshStats()
-    bind(RunService.Heartbeat, function()
-        refreshStats()
+    task.spawn(function()
+        while statsBox.Parent do
+            refreshStats()
+            task.wait(0.5)
+        end
     end)
 
 else
