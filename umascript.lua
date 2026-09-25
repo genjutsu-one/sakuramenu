@@ -3304,6 +3304,7 @@ BackgroundTransparency = 1,
 -- TABS
 -- ============================================================
 for i, tab in ipairs(TABS) do
+local tabBuilt, tabError = pcall(function()
 
 local yPos =  
     (i - 1) *  
@@ -3775,6 +3776,31 @@ btn.MouseButton1Click:Connect(
         )  
     end  
 )
+
+end)
+
+if not tabBuilt then
+    warn("[Sakura] Failed to build tab " .. tostring(tab.id) .. ": " .. tostring(tabError))
+    local errorPanel = newFrame({
+        Name = "TabBuildError",
+        Size = UDim2.new(1, -32, 0, 88),
+        Position = UDim2.new(0, 16, 0, 16),
+        BackgroundColor3 = Color3.fromRGB(112, 35, 42),
+        ZIndex = 50,
+    }, ContentArea)
+    corner(8, errorPanel)
+    newLabel({
+        Text = "UI error in " .. tostring(tab.id) .. ":\n" .. tostring(tabError),
+        Size = UDim2.new(1, -20, 1, -16),
+        Position = UDim2.new(0, 10, 0, 8),
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top,
+        TextColor3 = Color3.fromRGB(255, 235, 235),
+        TextSize = 13,
+        ZIndex = 51,
+    }, errorPanel)
+end
 
 end
 
