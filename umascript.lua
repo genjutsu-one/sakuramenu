@@ -2763,9 +2763,6 @@ end
 -- ТЕЛЕПОРТЫ (для вкладки Teleport)
 -- ============================================================
 -- ищет инстанс по цепочке имён-кандидатов (первый найденный вариант)
-    return cur
-end
-
 local function teleportRootTo(part, yOffset)
     local char = Players.LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -2930,9 +2927,8 @@ onClick = sellHeldUma,
 }
 
 local pages = {}
-"SakuraMenu"
-) then
-PlayerGui.SakuraMenu:Destroy()
+if PlayerGui:FindFirstChild("SakuraMenu") then
+    PlayerGui.SakuraMenu:Destroy()
 end
 
 -- ============================================================
@@ -3022,98 +3018,64 @@ end
 -- TOP BAR
 -- ============================================================
 local TopBar = newFrame({
-Name = "TopBar",
-Size = UDim2.new(1, 0, 0, 52),
-BackgroundTransparency = 1,
+    Name = "TopBar",
+    Size = UDim2.new(1, 0, 0, 52),
+    BackgroundTransparency = 1,
 }, MainFrame)
 
 local logoHolder = newFrame({
-Size = UDim2.fromOffset(26, 26),
-Position = UDim2.new(0, 16, 0.5, 0),
-AnchorPoint = Vector2.new(0, 0.5),
-BackgroundTransparency = 1,
+    Size = UDim2.fromOffset(26, 26),
+    Position = UDim2.new(0, 16, 0.5, 0),
+    AnchorPoint = Vector2.new(0, 0.5),
+    BackgroundTransparency = 1,
 }, TopBar)
 
-local logoIcon =
-drawIcon(
-"logo",
-logoHolder,
-)
-
-for _, part in ipairs(
-logoIcon:GetChildren()
-) do
-if part:IsA("Frame") then  
-    attachShimmer(  
-        part,  
-        Color3.fromRGB(190, 190, 198),  
-        2.2  
-    )  
+local logoIcon = drawIcon("logo", logoHolder, 26)
+for _, part in ipairs(logoIcon:GetChildren()) do
+    if part:IsA("Frame") then
+        attachShimmer(part, Color3.fromRGB(190, 190, 198), Color3.fromRGB(255, 255, 255), 2.2)
+    end
 end
+bind(RunService.RenderStepped, function(dt)
+    logoIcon.Rotation = (logoIcon.Rotation + dt * 14) % 360
+end)
 
-end
-bind(
-RunService.RenderStepped,
-function(dt)
-logoIcon.Rotation =
-(logoIcon.Rotation +
-dt * 14) % 360
-end
-)
-
-Text = "Sakura",
-Position = UDim2.new(0, 52, 0, 0),
-Size = UDim2.new(0, 150, 1, 0),
-TextXAlignment = Enum.TextXAlignment.Left,
-Font = Enum.Font.GothamBold,
-TextSize = 18,
-TextColor3 = CONFIG.SakuraPink,
+local titleLabel = newLabel({
+    Text = "Sakura",
+    Position = UDim2.new(0, 52, 0, 0),
+    Size = UDim2.new(0, 150, 1, 0),
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Font = Enum.Font.GothamBold,
+    TextSize = 18,
+    TextColor3 = CONFIG.SakuraPink,
 }, TopBar)
+attachShimmer(titleLabel, Color3.fromRGB(190, 45, 95), CONFIG.SakuraPink, 2.6)
 
-attachShimmer(
-CONFIG.SakuraPink,
-Color3.fromRGB(190, 45, 95),
-2.6
-)
-
-Name = "CloseBtn",
-Size = UDim2.fromOffset(30, 30),
-Position = UDim2.new(1, -16, 0.5, 0),
-AnchorPoint = Vector2.new(1, 0.5),
-BackgroundColor3 = CONFIG.CardColor,
+local btnClose = newButton({
+    Name = "CloseBtn",
+    Size = UDim2.fromOffset(30, 30),
+    Position = UDim2.new(1, -16, 0.5, 0),
+    AnchorPoint = Vector2.new(1, 0.5),
+    BackgroundColor3 = CONFIG.CardColor,
 }, TopBar)
-
 corner(8, btnClose)
-drawCross(
-btnClose,
-12,
-CONFIG.CloseColor,
-45,
--45
-)
+drawCross(btnClose, 12, CONFIG.CloseColor, 45, -45)
 
-Name = "MinimizeBtn",
-Size = UDim2.fromOffset(30, 30),
-Position = UDim2.new(1, -54, 0.5, 0),
-AnchorPoint = Vector2.new(1, 0.5),
-BackgroundColor3 = CONFIG.CardColor,
+local btnMinimize = newButton({
+    Name = "MinimizeBtn",
+    Size = UDim2.fromOffset(30, 30),
+    Position = UDim2.new(1, -54, 0.5, 0),
+    AnchorPoint = Vector2.new(1, 0.5),
+    BackgroundColor3 = CONFIG.CardColor,
 }, TopBar)
-
 corner(8, btnMinimize)
-
-drawCross(
-btnMinimize,
-12,
-CONFIG.AccentColor,
-0,
-nil
-)
+drawCross(btnMinimize, 12, CONFIG.AccentColor, 0, nil)
 
 newFrame({
-Size = UDim2.new(1, 0, 0, 1),
-Position = UDim2.new(0, 0, 1, 0),
-BackgroundColor3 = CONFIG.AccentColor,
-BackgroundTransparency = 0.9,
+    Size = UDim2.new(1, 0, 0, 1),
+    Position = UDim2.new(0, 0, 1, 0),
+    BackgroundColor3 = CONFIG.AccentColor,
+    BackgroundTransparency = 0.9,
 }, TopBar)
 
 -- ============================================================
