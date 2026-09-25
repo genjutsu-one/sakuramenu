@@ -2927,6 +2927,10 @@ onClick = sellHeldUma,
 }
 
 local pages = {}
+local tabButtons = {}
+local sidebarCollapsed = false
+local activeTab = TABS[1].id
+
 if PlayerGui:FindFirstChild("SakuraMenu") then
     PlayerGui.SakuraMenu:Destroy()
 end
