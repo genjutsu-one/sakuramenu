@@ -1578,11 +1578,13 @@ local function teleportToKick()
     root.CFrame = inFront
     root.AssemblyLinearVelocity = Vector3.zero
     root.AssemblyAngularVelocity = Vector3.zero
-    RunService.Heartbeat:Wait()
-
-    root.CFrame = stationCFrame
-    root.AssemblyLinearVelocity = Vector3.zero
-    root.AssemblyAngularVelocity = Vector3.zero
+    for step = 1, 6 do
+        if not root.Parent then return false end
+        root.CFrame = inFront:Lerp(stationCFrame, step / 6)
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        task.wait(0.04)
+    end
     return true
 end
 
@@ -3397,14 +3399,21 @@ elseif tab.id == "home" then
     corner(32, avatarImg)
 
     task.spawn(function()
-        local ok, img = pcall(function()
-            return Players:GetUserThumbnailAsync(
-                Players.LocalPlayer.UserId,
-                Enum.ThumbnailType.HeadShot,
-                Enum.ThumbnailSize.Size100x100
-            )
-        end)
-        if ok then avatarImg.Image = img end
+        for attempt = 1, 12 do
+            if not avatarImg.Parent then return end
+            local ok, img, isReady = pcall(function()
+                return Players:GetUserThumbnailAsync(
+                    Players.LocalPlayer.UserId,
+                    Enum.ThumbnailType.HeadShot,
+                    Enum.ThumbnailSize.Size100x100
+                )
+            end)
+            if ok and type(img) == "string" and img ~= "" then
+                avatarImg.Image = img
+                if isReady then return end
+            end
+            task.wait(0.5)
+        end
     end)
 
     newLabel({
