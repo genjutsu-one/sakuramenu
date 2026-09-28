@@ -1588,6 +1588,8 @@ local function teleportToKick()
     return true
 end
 
+local autoFarmPrepareKick
+
 local KickHandlers
 do
     local lp = Players.LocalPlayer
@@ -1726,6 +1728,9 @@ do
                     return nearKickZone() and ready()
                 end, 5)
             elseif ready() then
+                if autoFarmPrepareKick then
+                    pcall(autoFarmPrepareKick)
+                end
                 if not startKick(id, kickGui) then
                     waitFor(id, function() return false end, 1)
                 else
@@ -2708,6 +2713,27 @@ local function claimFreeGift()
     end
 end
 
+local autoFarmPanel
+local autoFarmStarted = false
+local autoFarmEnabled = false
+local autoFarmToken = 0
+local autoFarmTargets = {}
+local autoFarmRarities = {}
+local autoFarmMutations = {}
+local autoFarmRefresh
+local autoFarmStart
+local autoFarmStop
+local AutoFarmHandlers = {
+    onToggle = function(state)
+        autoFarmEnabled = state
+        autoFarmStarted = false
+        autoFarmToken = autoFarmToken + 1
+        if not state and autoFarmStop then autoFarmStop() end
+        if autoFarmPanel then autoFarmPanel.Visible = state end
+        if autoFarmRefresh then autoFarmRefresh() end
+    end,
+}
+
 local TABS = {
 {
 id = "home",
@@ -2762,6 +2788,10 @@ onClick = sellHeldUma,
     id = "farm",  
     name = "Auto Features",  
     funcs = {  
+        {
+            title = "Auto Farm Umas",
+            handlers = AutoFarmHandlers
+        },
         {  
             title = "Auto Kick",  
             handlers = KickHandlers  
@@ -2921,9 +2951,16 @@ local titleLabel = newLabel({
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.GothamBold,
     TextSize = 18,
-    TextColor3 = CONFIG.AccentColor,
+    TextColor3 = Color3.fromRGB(255, 255, 255),
 }, TopBar)
-attachShimmer(titleLabel, Color3.fromRGB(255, 78, 139), Color3.fromRGB(255, 224, 235), 4.2)
+local titleGradient = Instance.new("UIGradient")
+titleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 82, 145)),
+    ColorSequenceKeypoint.new(0.48, Color3.fromRGB(255, 195, 225)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(174, 92, 255)),
+})
+titleGradient.Rotation = 0
+titleGradient.Parent = titleLabel
 
 local btnClose = newButton({
     Name = "CloseBtn",
@@ -3778,6 +3815,656 @@ sidebarCollapsed =
 end
 
 )
+
+local farmReplicatedStorage = game:GetService("ReplicatedStorage")
+local farmEntities, farmRarityData, farmMutationData, farmKickData
+pcall(function()
+    farmEntities = require(farmReplicatedStorage.Shared.Data.EntitiesData)
+    farmRarityData = require(farmReplicatedStorage.Shared.Data.RarityData)
+    farmMutationData = require(farmReplicatedStorage.Shared.Data.MutationData)
+    farmKickData = require(farmReplicatedStorage.Shared.Data.KickData)
+end)
+
+local farmRarityOrder = {}
+local farmRarityThreshold = {}
+local farmPoolNames = {}
+if farmRarityData then
+    for _, entry in ipairs(farmRarityData.DistanceThresholds or {}) do
+        table.insert(farmRarityOrder, entry.Rarity)
+        farmRarityThreshold[entry.Rarity] = entry.Distance
+    end
+    for rarity, pool in pairs(farmRarityData.BrainrotPool or {}) do
+        farmPoolNames[rarity] = {}
+        for _, item in ipairs(pool) do
+            farmPoolNames[rarity][item.Name] = true
+        end
+    end
+end
+
+local function getFarmMaxDistance()
+    local ok, service = pcall(function()
+        return require(farmReplicatedStorage.Modules.ServicesLoader.KickServiceClient)
+    end)
+    if not ok or not service then return 0 end
+    local maxDistance = tonumber(service.MaxDistance) or 0
+    if maxDistance <= 0 and farmKickData then
+        maxDistance = farmKickData:GetDistanceFromLevel(tonumber(service.Level) or 1)
+    end
+    return maxDistance
+end
+
+local function getFarmPowerLevel(rarity)
+    local threshold = farmRarityThreshold[rarity]
+    if threshold == nil or not farmKickData then return nil end
+    local ok, service = pcall(function()
+        return require(farmReplicatedStorage.Modules.ServicesLoader.KickServiceClient)
+    end)
+    if not ok or not service then return nil end
+    local maxLevel = math.max(1, math.floor(tonumber(service.Level) or 1))
+    local powerMultiplier = tonumber(service.Multipliers and service.Multipliers.Power) or 1
+    if getFarmMaxDistance() < threshold then return nil end
+    local low, high = 1, maxLevel
+    while low < high do
+        local middle = math.floor((low + high) / 2)
+        if farmKickData:GetDistanceFromLevel(middle) * powerMultiplier >= threshold then
+            high = middle
+        else
+            low = middle + 1
+        end
+    end
+    if farmKickData:GetDistanceFromLevel(low) * powerMultiplier < threshold then
+        return nil
+    end
+    return low, maxLevel
+end
+
+local function isFarmUmaAvailable(name, data)
+    if not (data and data.Rarity and farmPoolNames[data.Rarity]
+        and farmPoolNames[data.Rarity][name]) then
+        return false
+    end
+    return getFarmPowerLevel(data.Rarity) ~= nil
+end
+
+if farmEntities and farmEntities.Brainrots then
+    local extraRarities = {}
+    for _, data in pairs(farmEntities.Brainrots) do
+        if data.Rarity and not farmRarityThreshold[data.Rarity]
+            and not table.find(extraRarities, data.Rarity) then
+            table.insert(extraRarities, data.Rarity)
+        end
+    end
+    table.sort(extraRarities)
+    for _, rarity in ipairs(extraRarities) do
+        table.insert(farmRarityOrder, rarity)
+    end
+end
+
+autoFarmPanel = newFrame({
+    Name = "AutoFarmUmasPanel",
+    Size = UDim2.fromScale(0.92, 0.9),
+    Position = UDim2.fromScale(0.5, 0.5),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    BackgroundColor3 = CONFIG.BgColor,
+    BackgroundTransparency = 0.03,
+    Visible = false,
+    ZIndex = 20,
+}, ScreenGui)
+corner(12, autoFarmPanel)
+stroke(autoFarmPanel, CONFIG.AccentColor, 0.55, 1)
+
+newLabel({
+    Text = "Auto Farm Umas",
+    Position = UDim2.new(0, 14, 0, 8),
+    Size = UDim2.new(1, -28, 0, 28),
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Font = Enum.Font.GothamBold,
+    TextSize = 18,
+    ZIndex = 21,
+}, autoFarmPanel)
+
+local function makeFarmChip(parent, text, position, size)
+    local button = newButton({
+        Text = text,
+        Position = position,
+        Size = size,
+        BackgroundColor3 = CONFIG.CardColor,
+        BackgroundTransparency = 0,
+        TextColor3 = CONFIG.MutedTextColor,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        ZIndex = 22,
+    }, parent)
+    corner(6, button)
+    stroke(button, CONFIG.AccentColor, 0.82, 1)
+    return button
+end
+
+local rarityBar = newFrame({
+    Name = "RarityFilters",
+    Position = UDim2.new(0, 12, 0, 42),
+    Size = UDim2.new(1, -24, 0, 34),
+    BackgroundTransparency = 1,
+    ZIndex = 21,
+}, autoFarmPanel)
+local mutationBar = newFrame({
+    Name = "MutationFilters",
+    Position = UDim2.new(0, 12, 0, 80),
+    Size = UDim2.new(1, -24, 0, 34),
+    BackgroundTransparency = 1,
+    ZIndex = 21,
+}, autoFarmPanel)
+
+newLabel({
+    Text = "Select Umas (tap a card to configure mutations)",
+    Position = UDim2.new(0, 12, 0, 116),
+    Size = UDim2.new(0.62, -16, 0, 22),
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextSize = 12,
+    TextColor3 = CONFIG.MutedTextColor,
+    ZIndex = 21,
+}, autoFarmPanel)
+newLabel({
+    Text = "Selected Uma mutations",
+    Position = UDim2.new(0.64, 0, 0, 116),
+    Size = UDim2.new(0.34, -12, 0, 22),
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextSize = 12,
+    TextColor3 = CONFIG.MutedTextColor,
+    ZIndex = 21,
+}, autoFarmPanel)
+
+local farmCardScroll = Instance.new("ScrollingFrame")
+farmCardScroll.Name = "UmaCards"
+farmCardScroll.Position = UDim2.new(0, 12, 0, 140)
+farmCardScroll.Size = UDim2.new(0.62, -16, 1, -196)
+farmCardScroll.BackgroundTransparency = 1
+farmCardScroll.BorderSizePixel = 0
+farmCardScroll.ScrollBarThickness = 4
+farmCardScroll.ScrollBarImageColor3 = CONFIG.AccentColor
+farmCardScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+farmCardScroll.CanvasSize = UDim2.new()
+farmCardScroll.ZIndex = 21
+farmCardScroll.Parent = autoFarmPanel
+local farmGrid = Instance.new("UIGridLayout")
+farmGrid.CellSize = UDim2.fromOffset(106, 112)
+farmGrid.CellPadding = UDim2.fromOffset(7, 7)
+farmGrid.SortOrder = Enum.SortOrder.LayoutOrder
+farmGrid.Parent = farmCardScroll
+
+local farmMutationPane = newFrame({
+    Name = "UmaMutations",
+    Position = UDim2.new(0.64, 0, 0, 140),
+    Size = UDim2.new(0.34, -12, 1, -196),
+    BackgroundColor3 = CONFIG.CardColor,
+    BackgroundTransparency = 0.15,
+    ZIndex = 21,
+}, autoFarmPanel)
+corner(8, farmMutationPane)
+local currentUmaLabel = newLabel({
+    Text = "Choose an Uma card",
+    Position = UDim2.new(0, 10, 0, 8),
+    Size = UDim2.new(1, -20, 0, 34),
+    TextWrapped = true,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextSize = 14,
+    Font = Enum.Font.GothamBold,
+    ZIndex = 22,
+}, farmMutationPane)
+local removeTargetButton = makeFarmChip(
+    farmMutationPane,
+    "Remove Uma",
+    UDim2.new(0, 10, 0, 48),
+    UDim2.new(1, -20, 0, 28)
+)
+local umaMutationGrid = Instance.new("Frame")
+umaMutationGrid.Position = UDim2.new(0, 8, 0, 84)
+umaMutationGrid.Size = UDim2.new(1, -16, 1, -92)
+umaMutationGrid.BackgroundTransparency = 1
+umaMutationGrid.ZIndex = 22
+umaMutationGrid.Parent = farmMutationPane
+local umaMutationLayout = Instance.new("UIGridLayout")
+umaMutationLayout.CellSize = UDim2.new(0.32, -4, 0, 32)
+umaMutationLayout.CellPadding = UDim2.fromOffset(4, 5)
+umaMutationLayout.SortOrder = Enum.SortOrder.LayoutOrder
+umaMutationLayout.Parent = umaMutationGrid
+
+local farmStatus = newLabel({
+    Text = "Choose specific Umas or broad rarity/mutation filters.",
+    Position = UDim2.new(0, 14, 1, -45),
+    Size = UDim2.new(1, -150, 0, 32),
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextWrapped = true,
+    TextSize = 11,
+    TextColor3 = CONFIG.MutedTextColor,
+    ZIndex = 22,
+}, autoFarmPanel)
+local farmStartButton = newButton({
+    Text = "START",
+    Position = UDim2.new(1, -122, 1, -46),
+    Size = UDim2.fromOffset(108, 34),
+    BackgroundColor3 = Color3.fromRGB(255, 76, 145),
+    BackgroundTransparency = 0,
+    TextColor3 = Color3.new(1, 1, 1),
+    Font = Enum.Font.GothamBold,
+    TextSize = 13,
+    ZIndex = 22,
+}, autoFarmPanel)
+corner(7, farmStartButton)
+
+local function buildFarmFilterRow(parent, values, stateMap, yOffset)
+    newLabel({
+        Text = parent == rarityBar and "Farm all:" or "Mutation:",
+        Position = UDim2.new(0, 0, 0, 0),
+        Size = UDim2.fromOffset(78, 28),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize = 11,
+        TextColor3 = CONFIG.MutedTextColor,
+        ZIndex = 22,
+    }, parent)
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Position = UDim2.new(0, 82, 0, 0)
+    scroll.Size = UDim2.new(1, -82, 1, 0)
+    scroll.BackgroundTransparency = 1
+    scroll.BorderSizePixel = 0
+    scroll.ScrollingDirection = Enum.ScrollingDirection.X
+    scroll.ScrollBarThickness = 0
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.X
+    scroll.CanvasSize = UDim2.new()
+    scroll.ZIndex = 22
+    scroll.Parent = parent
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.Padding = UDim.new(0, 5)
+    layout.Parent = scroll
+    for _, value in ipairs(values) do
+        local chip = makeFarmChip(scroll, value, UDim2.new(), UDim2.fromOffset(76, 28))
+        chip.LayoutOrder = #scroll:GetChildren()
+        chip.Activated:Connect(function()
+            stateMap[value] = not stateMap[value] and true or nil
+            if autoFarmRefresh then autoFarmRefresh() end
+        end)
+        chip:SetAttribute("FarmFilterValue", value)
+        chip:SetAttribute("FarmFilterKind", parent.Name)
+    end
+    return scroll
+end
+
+buildFarmFilterRow(rarityBar, farmRarityOrder, autoFarmRarities, 0)
+local farmMutationFilters = { "Normal" }
+for _, mutation in ipairs((farmMutationData and farmMutationData.ValidMutations) or {}) do
+    table.insert(farmMutationFilters, mutation)
+end
+buildFarmFilterRow(mutationBar, farmMutationFilters, autoFarmMutations, 0)
+
+local farmCardRecords = {}
+local selectedUmaName
+local function makeFallbackFarmCard(parent, name, data)
+    local card = newFrame({
+        Size = UDim2.fromOffset(106, 112),
+        BackgroundColor3 = CONFIG.CardColor,
+        ZIndex = 22,
+    }, parent)
+    corner(7, card)
+    local icon = Instance.new("ImageLabel")
+    icon.BackgroundTransparency = 1
+    icon.Size = UDim2.new(1, -10, 1, -34)
+    icon.Position = UDim2.new(0, 5, 0, 5)
+    icon.Image = data.Image or ""
+    icon.ScaleType = Enum.ScaleType.Fit
+    icon.ZIndex = 23
+    icon.Parent = card
+    newLabel({
+        Text = name,
+        Position = UDim2.new(0, 3, 1, -25),
+        Size = UDim2.new(1, -6, 0, 22),
+        TextScaled = true,
+        TextWrapped = true,
+        ZIndex = 23,
+    }, card)
+    return card
+end
+
+local originalUmaCard
+pcall(function()
+    local frames = PlayerGui:FindFirstChild("Frames")
+    local index = frames and frames:FindFirstChild("Index")
+    local holder = index and index:FindFirstChild("Holder")
+    local scroll = holder and holder:FindFirstChild("ScrollingFrame")
+    originalUmaCard = scroll and scroll:FindFirstChild("Brainrot")
+end)
+
+local function targetMutationSet(name)
+    autoFarmTargets[name] = autoFarmTargets[name] or {}
+    return autoFarmTargets[name]
+end
+
+local farmMutationButtons = {}
+for index, mutation in ipairs({ "Any", "Normal", table.unpack(farmMutationData and farmMutationData.ValidMutations or {}) }) do
+    local button = makeFarmChip(
+        umaMutationGrid,
+        mutation,
+        UDim2.new(),
+        UDim2.new(0.32, -4, 0, 32)
+    )
+    button.LayoutOrder = index
+    button.Activated:Connect(function()
+        if not selectedUmaName or not autoFarmTargets[selectedUmaName] then return end
+        local selection = targetMutationSet(selectedUmaName)
+        if mutation == "Any" then
+            table.clear(selection)
+        elseif mutation == "Normal" then
+            table.clear(selection)
+            selection.Normal = true
+        else
+            selection.Normal = nil
+            selection[mutation] = not selection[mutation] and true or nil
+        end
+        if autoFarmRefresh then autoFarmRefresh() end
+    end)
+    table.insert(farmMutationButtons, { button = button, mutation = mutation })
+end
+
+removeTargetButton.Activated:Connect(function()
+    if selectedUmaName then
+        autoFarmTargets[selectedUmaName] = nil
+        if autoFarmRefresh then autoFarmRefresh() end
+    end
+end)
+
+local function addFarmCard(name, data, order)
+    local card
+    if originalUmaCard and originalUmaCard:IsA("GuiObject") then
+        card = originalUmaCard:Clone()
+        card.Name = "Farm_" .. name
+        card.Visible = true
+        card.Size = UDim2.fromOffset(106, 112)
+        local icon = card:FindFirstChild("Icon", true)
+        local nameLabel = card:FindFirstChild("NameLabel", true)
+        local cps = card:FindFirstChild("CPSLabel", true)
+        if icon and icon:IsA("ImageLabel") then
+            icon.Image = data.Image or ""
+            icon.ImageColor3 = Color3.new(1, 1, 1)
+            icon.Visible = true
+        end
+        if nameLabel and nameLabel:IsA("TextLabel") then
+            nameLabel.Text = data.DisplayName or name
+            nameLabel.Visible = true
+        end
+        if cps and cps:IsA("TextLabel") then cps.Visible = false end
+        card.Parent = farmCardScroll
+        card.LayoutOrder = order
+    else
+        card = makeFallbackFarmCard(farmCardScroll, name, data)
+        card.LayoutOrder = order
+    end
+    local availability = isFarmUmaAvailable(name, data)
+    local click = newButton({
+        Size = UDim2.fromScale(1, 1),
+        BackgroundTransparency = 1,
+        ZIndex = 26,
+        Active = availability,
+        AutoButtonColor = availability,
+    }, card)
+    click.Activated:Connect(function()
+        if not isFarmUmaAvailable(name, data) then return end
+        selectedUmaName = name
+        autoFarmTargets[name] = autoFarmTargets[name] or {}
+        if autoFarmRefresh then autoFarmRefresh() end
+    end)
+    local cover = newFrame({
+        Name = "UnavailableOverlay",
+        Size = UDim2.fromScale(1, 1),
+        BackgroundColor3 = Color3.fromRGB(10, 10, 12),
+        BackgroundTransparency = 0.42,
+        Visible = not availability,
+        ZIndex = 24,
+    }, card)
+    corner(6, cover)
+    local lockLabel = newLabel({
+        Text = farmPoolNames[data.Rarity] and "POWER TOO LOW" or "EVENT ONLY",
+        Size = UDim2.fromScale(1, 1),
+        TextColor3 = Color3.fromRGB(165, 165, 170),
+        Font = Enum.Font.GothamBold,
+        TextSize = 9,
+        ZIndex = 25,
+    }, cover)
+    table.insert(farmCardRecords, {
+        name = name,
+        data = data,
+        card = card,
+        click = click,
+        cover = cover,
+        lockLabel = lockLabel,
+        outline = card:FindFirstChildOfClass("UIStroke") or stroke(card, CONFIG.AccentColor, 0.8, 1),
+        availability = availability,
+    })
+end
+
+local allUmaEntries = {}
+if farmEntities and farmEntities.Brainrots then
+    for name, data in pairs(farmEntities.Brainrots) do
+        table.insert(allUmaEntries, { name = name, data = data })
+    end
+end
+table.sort(allUmaEntries, function(a, b)
+    local aOrder = table.find(farmRarityOrder, a.data.Rarity) or 999
+    local bOrder = table.find(farmRarityOrder, b.data.Rarity) or 999
+    if aOrder == bOrder then return a.name < b.name end
+    return aOrder < bOrder
+end)
+for index, item in ipairs(allUmaEntries) do
+    addFarmCard(item.name, item.data, index)
+end
+
+local function selectedMutationMatch(selection, actual)
+    if not selection or next(selection) == nil then return true end
+    if selection.Normal then return #actual == 0 end
+    for mutation in pairs(selection) do
+        if table.find(actual, mutation) then return true end
+    end
+    return false
+end
+
+local function isFarmTargetTool(tool)
+    if not (farmEntities and farmEntities.Brainrots[tool.Name] and farmMutationData) then return false end
+    local data = farmEntities.Brainrots[tool.Name]
+    local actual = farmMutationData.GetMutationsFromInstance(tool)
+    local specific = autoFarmTargets[tool.Name]
+    if specific and selectedMutationMatch(specific, actual) then return true end
+    if autoFarmRarities[data.Rarity] and farmPoolNames[data.Rarity]
+        and farmPoolNames[data.Rarity][tool.Name]
+        and selectedMutationMatch(autoFarmMutations, actual) then
+        return true
+    end
+    return false
+end
+
+local function getFarmPlan()
+    local plan = {}
+    for _, item in ipairs(allUmaEntries) do
+        if isFarmUmaAvailable(item.name, item.data)
+            and (autoFarmTargets[item.name] ~= nil
+                or (autoFarmRarities[item.data.Rarity]
+                    and farmPoolNames[item.data.Rarity]
+                    and farmPoolNames[item.data.Rarity][item.name])) then
+            table.insert(plan, { name = item.name, rarity = item.data.Rarity })
+        end
+    end
+    return plan
+end
+
+local function updateFarmFilterColors()
+    for _, row in ipairs({ rarityBar, mutationBar }) do
+        for _, child in ipairs(row:GetDescendants()) do
+            if child:IsA("TextButton") then
+                local value = child:GetAttribute("FarmFilterValue")
+                local map = row == rarityBar and autoFarmRarities or autoFarmMutations
+                local chosen = value and map[value]
+                local available = true
+                if row == rarityBar then
+                    available = false
+                    for _, item in ipairs(allUmaEntries) do
+                        if item.data.Rarity == value and isFarmUmaAvailable(item.name, item.data) then
+                            available = true
+                            break
+                        end
+                    end
+                end
+                child.BackgroundColor3 = chosen and Color3.fromRGB(255, 76, 145) or CONFIG.CardColor
+                child.TextColor3 = available
+                    and (chosen and Color3.new(1, 1, 1) or CONFIG.MutedTextColor)
+                    or Color3.fromRGB(115, 115, 120)
+                child.Active = available
+                child.AutoButtonColor = available
+            end
+        end
+    end
+end
+
+autoFarmRefresh = function()
+    updateFarmFilterColors()
+    for _, record in ipairs(farmCardRecords) do
+        record.availability = isFarmUmaAvailable(record.name, record.data)
+        record.click.Active = record.availability
+        record.click.AutoButtonColor = record.availability
+        local chosen = autoFarmTargets[record.name] ~= nil
+        record.cover.Visible = not record.availability
+        record.lockLabel.Text = farmPoolNames[record.data.Rarity]
+            and "POWER TOO LOW" or "EVENT ONLY"
+        record.outline.Color = chosen and Color3.fromRGB(255, 76, 145) or CONFIG.AccentColor
+        record.outline.Transparency = chosen and 0.12 or 0.8
+    end
+    local selection = selectedUmaName and autoFarmTargets[selectedUmaName]
+    currentUmaLabel.Text = selectedUmaName
+        and ((autoFarmTargets[selectedUmaName] and "✓ " or "") .. selectedUmaName)
+        or "Choose an Uma card"
+    removeTargetButton.Visible = selection ~= nil
+    for _, entry in ipairs(farmMutationButtons) do
+        local chosen = entry.mutation == "Any"
+            and selection ~= nil and next(selection) == nil
+            or selection ~= nil and selection[entry.mutation] == true
+        entry.button.BackgroundColor3 = chosen
+            and Color3.fromRGB(255, 76, 145) or CONFIG.CardColor
+        entry.button.TextColor3 = selection
+            and (chosen and Color3.new(1, 1, 1) or CONFIG.MutedTextColor)
+            or Color3.fromRGB(115, 115, 120)
+        entry.button.Active = selection ~= nil
+        entry.button.AutoButtonColor = selection ~= nil
+    end
+    local targetCount = 0
+    for _ in pairs(autoFarmTargets) do targetCount = targetCount + 1 end
+    local rarityCount = 0
+    for _, value in pairs(autoFarmRarities) do if value then rarityCount = rarityCount + 1 end end
+    local mutationCount = 0
+    for _, value in pairs(autoFarmMutations) do if value then mutationCount = mutationCount + 1 end end
+    if autoFarmStarted then
+        farmStatus.Text = "Running. Turn the toggle off to stop; Start is required after enabling again."
+    elseif autoFarmEnabled then
+        farmStatus.Text = ("Ready: %d Uma targets, %d broad rarities, %d mutation filters."):format(targetCount, rarityCount, mutationCount)
+    else
+        farmStatus.Text = "Choose specific Umas or broad rarity/mutation filters."
+    end
+    farmStartButton.Text = autoFarmStarted and "RUNNING" or "START"
+    farmStartButton.Active = autoFarmEnabled and not autoFarmStarted
+    farmStartButton.BackgroundColor3 = farmStartButton.Active
+        and Color3.fromRGB(255, 76, 145) or Color3.fromRGB(70, 70, 75)
+end
+
+autoFarmStart = function()
+    if not autoFarmEnabled or autoFarmStarted then return end
+    local plan = getFarmPlan()
+    if #plan == 0 then
+        farmStatus.Text = "Select at least one available Uma or rarity."
+        return
+    end
+    autoFarmStarted = true
+    autoFarmToken = autoFarmToken + 1
+    local id = autoFarmToken
+    local nextPlanIndex = 0
+    autoFarmPrepareKick = function()
+        local currentPlan = getFarmPlan()
+        if #currentPlan == 0 then return end
+        nextPlanIndex = nextPlanIndex % #currentPlan + 1
+        local target = currentPlan[nextPlanIndex]
+        local level, maxLevel = getFarmPowerLevel(target.rarity)
+        if not level then return end
+        local net = getNetwork()
+        local setter = net and net:FindFirstChild("rev_KickPowerSelection_Set")
+        if setter then
+            setter:FireServer(level >= maxLevel and "MAX" or level)
+            task.wait(0.12)
+        end
+    end
+    KickHandlers.onToggle(true)
+    autoFarmRefresh()
+    task.spawn(function()
+        task.wait(1.5)
+        while autoFarmEnabled and autoFarmStarted and autoFarmToken == id do
+            local kickGui = PlayerGui:FindFirstChild("KickMinigame")
+            local lp = Players.LocalPlayer
+            local character = lp.Character
+            local busyNow = lp:GetAttribute("LocalKickBusy") == true
+                or lp:GetAttribute("IsKicking") == true
+                or (kickGui and kickGui.Enabled)
+            if not busyNow then
+                local backpack = lp:FindFirstChild("Backpack")
+                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                local net = getNetwork()
+                local sell = net and net:FindFirstChild("ref_B_Sell")
+                if backpack and humanoid and sell and farmEntities and farmMutationData then
+                    local tools = {}
+                    for _, tool in ipairs(backpack:GetChildren()) do
+                        if tool:IsA("Tool") then table.insert(tools, tool) end
+                    end
+                    local held = character and character:FindFirstChildOfClass("Tool")
+                    if held then table.insert(tools, held) end
+                    for _, tool in ipairs(tools) do
+                        if not (autoFarmEnabled and autoFarmStarted and autoFarmToken == id) then break end
+                        if isUmaTool(tool) and not isFarmTargetTool(tool) then
+                            if not (lp:GetAttribute("LocalKickBusy") == true
+                                or lp:GetAttribute("IsKicking") == true) then
+                                pcall(function()
+                                    humanoid:EquipTool(tool)
+                                    task.wait(0.12)
+                                    sell:InvokeServer()
+                                end)
+                                task.wait(0.1)
+                            end
+                        end
+                    end
+                end
+            end
+            task.wait(0.75)
+        end
+    end)
+    autoFarmRefresh()
+end
+
+autoFarmStop = function()
+    autoFarmStarted = false
+    autoFarmPrepareKick = nil
+    KickHandlers.onToggle(false)
+    local net = getNetwork()
+    local setter = net and net:FindFirstChild("rev_KickPowerSelection_Set")
+    if setter then pcall(function() setter:FireServer("MAX") end) end
+    if autoFarmRefresh then autoFarmRefresh() end
+end
+
+farmStartButton.Activated:Connect(function()
+    if autoFarmStart then autoFarmStart() end
+end)
+autoFarmRefresh()
+
+pcall(function()
+    local kickService = require(farmReplicatedStorage.Modules.ServicesLoader.KickServiceClient)
+    kickService.LevelChanged:Connect(function()
+        if autoFarmRefresh then autoFarmRefresh() end
+    end)
+    kickService.DistanceChanged:Connect(function()
+        if autoFarmRefresh then autoFarmRefresh() end
+    end)
+end)
 
 local FLOAT_SIZE = 46
 
