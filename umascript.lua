@@ -195,56 +195,15 @@ local ICON_URLS = {
     floating_button = "https://raw.githubusercontent.com/genjutsu-one/sakuramenu/main/file_0000000001308210b2a1abcfd640b720.png",
 }
 
-local assetCache = {}
-
-local function getCachedAsset(name, url)
-    local setter = getcustomasset or getsynasset
-    if not setter or not writefile or not game.HttpGet then return nil end
-    if assetCache[name] then return assetCache[name] end
-
-    local folder = CONFIG_FOLDER .. "/assets"
-    local path = folder .. "/" .. name .. ".png"
-    pcall(function()
-        if makefolder and isfolder and not isfolder(CONFIG_FOLDER) then
-            makefolder(CONFIG_FOLDER)
-        end
-        if makefolder and isfolder and not isfolder(folder) then
-            makefolder(folder)
-        end
-    end)
-
-    local exists = false
-    if isfile then
-        local ok, result = pcall(isfile, path)
-        exists = ok and result
-    end
-    if not exists then
-        local ok, data = pcall(function() return game:HttpGet(url) end)
-        if not ok or type(data) ~= "string" then return nil end
-        local a, b, c, d = string.byte(data, 1, 4)
-        if a ~= 137 or b ~= 80 or c ~= 78 or d ~= 71 then return nil end
-        local written = pcall(writefile, path, data)
-        if not written then return nil end
-    end
-
-    local ok, asset = pcall(setter, path)
-    if ok then
-        assetCache[name] = asset
-        return asset
-    end
-    return nil
-end
-
 local function materialImage(kind, parent, size, tint)
     local url = ICON_URLS[kind]
-    local image = url and getCachedAsset(kind .. "_white", url)
-    if not image then return nil end
+    if not url then return nil end
 
     local img = Instance.new("ImageLabel")
     img.Name = kind .. "Icon"
     img.Size = UDim2.fromOffset(size, size)
     img.BackgroundTransparency = 1
-    img.Image = image
+    img.Image = url
     img.ImageColor3 = tint or CONFIG.AccentColor
     img.ScaleType = Enum.ScaleType.Fit
     img.Parent = parent
@@ -1983,6 +1942,7 @@ local dailyQuestPacket
 local dailyQuestListenerAttached = false
 local AutoTrainingHandlers
 local questFarmMode
+local DailyQuestHandlers
 
 local function getQuestLists(packet)
     local lists = {}
@@ -2018,10 +1978,10 @@ local function equipWeightForLiftQuest()
 end
 
 local function getQuestFarmMode(quest)
-    local questName = string.lower(table.concat({
-        tostring(quest.Id or quest.Key or ""),
-        tostring(quest.Title or ""),
-    }, " "))
+    local questId = string.lower(tostring(quest.Id or quest.Key or ""))
+    local questName = questId .. " " .. string.lower(tostring(quest.Title or ""))
+    if questId == "kicks" or questId == "weeklykicks" then return "kick" end
+    if questId == "lifts" or questId == "weeklylifts" then return "weight" end
     if string.find(questName, "kick", 1, true) then return "kick" end
     if string.find(questName, "lift", 1, true)
         or string.find(questName, "weight", 1, true) then
@@ -2042,77 +2002,104 @@ local function setQuestFarmMode(mode)
     end
 end
 
-local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
-    local net = getNetwork()
-    if not net then return end
-    if not dailyQuestListenerAttached then
-        dailyQuestListenerAttached = true
-        net:WaitForChild("rev_DailyQuests_Update", 5).OnClientEvent:Connect(function(packet)
-            dailyQuestPacket = packet
-        end)
+do
+    local active, token = false, 0
+
+    local function isActive(id)
+        return active and token == id
     end
 
-    net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
-    local started = os.clock()
-    while not dailyQuestPacket and os.clock() - started < 3 do
-        task.wait(0.1)
-    end
+    local function processQuests(id)
+        local net = getNetwork()
+        if not net or not isActive(id) then return end
 
-    local netClaim = net:WaitForChild("rev_DailyQuests_Claim", 5)
-    local questLists = getQuestLists(dailyQuestPacket)
-    local completedFarmMode
-    for _, quests in ipairs(questLists) do
-        for _, quest in pairs(quests) do
-            local questId = quest.Id or quest.Key
-            local current = tonumber(quest.Current) or 0
-            local target = tonumber(quest.Target) or math.huge
-            local mode = getQuestFarmMode(quest)
+        if not dailyQuestListenerAttached then
+            local updateEvent = net:WaitForChild("rev_DailyQuests_Update", 5)
+            if not updateEvent or not isActive(id) then return end
+            dailyQuestListenerAttached = true
+            updateEvent.OnClientEvent:Connect(function(packet)
+                dailyQuestPacket = packet
+            end)
+        end
 
-            if questId and not quest.Claimed and current >= target then
-                if mode and mode == questFarmMode then
-                    completedFarmMode = mode
+        local requestEvent = net:WaitForChild("rev_DailyQuests_Request", 5)
+        local claimEvent = net:WaitForChild("rev_DailyQuests_Claim", 5)
+        if not (requestEvent and claimEvent and isActive(id)) then return end
+
+        dailyQuestPacket = nil
+        requestEvent:FireServer()
+        local started = os.clock()
+        while isActive(id) and not dailyQuestPacket and os.clock() - started < 3 do
+            task.wait(0.1)
+        end
+        if not isActive(id) or type(dailyQuestPacket) ~= "table" then return end
+
+        local questLists = getQuestLists(dailyQuestPacket)
+        local questModes = { "kick", "weight" }
+        for _, quests in ipairs(questLists) do
+            for _, mode in ipairs(questModes) do
+                if not isActive(id) then return end
+                for _, quest in ipairs(quests) do
+                    local questId = quest.Id or quest.Key
+                    if getQuestFarmMode(quest) == mode
+                        and questId and not quest.Claimed then
+                        local current = tonumber(quest.Current) or 0
+                        local target = tonumber(quest.Target) or math.huge
+                        if current >= target then
+                            pcall(function()
+                                claimEvent:FireServer(questId)
+                            end)
+                            if questFarmMode == mode then
+                                setQuestFarmMode(nil)
+                            end
+                        else
+                            setQuestFarmMode(mode)
+                            if mode == "weight" and isActive(id) then
+                                equipWeightForLiftQuest()
+                            end
+                        end
+                        return
+                    end
                 end
-                local ok, err = pcall(function()
-                    netClaim:FireServer(questId)
-                end)
-                if not ok then
-                    
-                end
-                task.wait(0.15)
             end
         end
-    end
 
-    if completedFarmMode then
+        for _, quests in ipairs(questLists) do
+            for _, quest in ipairs(quests) do
+                if not isActive(id) then return end
+                local questId = quest.Id or quest.Key
+                local current = tonumber(quest.Current) or 0
+                local target = tonumber(quest.Target) or math.huge
+                if not getQuestFarmMode(quest) and questId
+                    and not quest.Claimed and current >= target then
+                    pcall(function()
+                        claimEvent:FireServer(questId)
+                    end)
+                end
+            end
+        end
         setQuestFarmMode(nil)
-        return
     end
 
-    for _, quests in ipairs(questLists) do
-        local kickQuest, weightQuest
-        for _, quest in pairs(quests) do
-            local current = tonumber(quest.Current) or 0
-            local target = tonumber(quest.Target) or math.huge
-            if not quest.Claimed and current < target then
-                local mode = getQuestFarmMode(quest)
-                if mode == "kick" then
-                    kickQuest = true
-                elseif mode == "weight" then
-                    weightQuest = true
-                end
+    DailyQuestHandlers = {
+        onToggle = function(state)
+            active = state
+            token = token + 1
+            local id = token
+            if not state then
+                setQuestFarmMode(nil)
+                return
             end
-        end
-        if kickQuest then
-            setQuestFarmMode("kick")
-            return
-        elseif weightQuest then
-            setQuestFarmMode("weight")
-            equipWeightForLiftQuest()
-            return
-        end
-    end
-    setQuestFarmMode(nil)
-end, 8)
+
+            task.spawn(function()
+                while isActive(id) do
+                    pcall(processQuests, id)
+                    task.wait(8)
+                end
+            end)
+        end,
+    }
+end
 
 local function teleportToOwnPlot()
     local plot = getOwnPlotModel()
@@ -2785,13 +2772,13 @@ local tabButtons = {}
 local sidebarCollapsed = false
 local activeTab = TABS[1].id
 
-if PlayerGui:FindFirstChild("SakuraMenu") then
-    PlayerGui.SakuraMenu:Destroy()
+if PlayerGui:FindFirstChild("FuckCMMenu") then
+    PlayerGui.FuckCMMenu:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
 
-ScreenGui.Name = "SakuraMenu"
+ScreenGui.Name = "FuckCMMenu"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior =
@@ -2853,7 +2840,7 @@ local titleLabel = newLabel({
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.GothamBold,
     TextSize = 18,
-    TextColor3 = CONFIG.SakuraPink,
+    TextColor3 = CONFIG.AccentColor,
 }, TopBar)
 attachShimmer(titleLabel, Color3.fromRGB(255, 78, 139), Color3.fromRGB(255, 224, 235), 4.2)
 
@@ -3742,31 +3729,20 @@ FloatBtn
 
 stroke(
 FloatBtn,
-CONFIG.SakuraPink,
+CONFIG.AccentColor,
 0.35,
 2
 )
 
-local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
-if floatingImage then
-    local image = Instance.new("ImageLabel")
-    image.Name = "BrandImage"
-    image.Size = UDim2.fromScale(1, 1)
-    image.BackgroundTransparency = 1
-    image.Image = floatingImage
-    image.ScaleType = Enum.ScaleType.Fit
-    image.ZIndex = 3
-    image.Parent = FloatBtn
-else
-    newLabel({
-        Text = "F",
-        Size = UDim2.fromScale(1, 1),
-        Font = Enum.Font.GothamBlack,
-        TextSize = 20,
-        TextColor3 = CONFIG.SakuraPink,
-        ZIndex = 3,
-    }, FloatBtn)
-end
+local floatingImage = ICON_URLS.floating_button
+local image = Instance.new("ImageLabel")
+image.Name = "BrandImage"
+image.Size = UDim2.fromScale(1, 1)
+image.BackgroundTransparency = 1
+image.Image = floatingImage
+image.ScaleType = Enum.ScaleType.Fit
+image.ZIndex = 3
+image.Parent = FloatBtn
 
 do
 local dragging = false
