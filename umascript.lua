@@ -191,16 +191,16 @@ custom = {}
 }
 
 local ICON_URLS = {
-    home = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/home/materialicons/24dp/1x/baseline_home_black_24dp.png",
-    player = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/account_circle/materialicons/24dp/1x/baseline_account_circle_black_24dp.png",
-    farm = "https://raw.githubusercontent.com/google/material-design-icons/master/png/content/bolt/materialicons/24dp/1x/baseline_bolt_black_24dp.png",
-    misc = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/more_horiz/materialicons/24dp/1x/baseline_more_horiz_black_24dp.png",
-    settings = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/settings/materialicons/24dp/1x/baseline_settings_black_24dp.png",
-    teleport = "https://raw.githubusercontent.com/google/material-design-icons/master/png/maps/my_location/materialicons/24dp/1x/baseline_my_location_black_24dp.png",
-    collapse = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/chevron_left/materialicons/24dp/1x/baseline_chevron_left_black_24dp.png",
-    chevron_right = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/chevron_right/materialicons/24dp/1x/baseline_chevron_right_black_24dp.png",
-    close = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/close/materialicons/24dp/1x/baseline_close_black_24dp.png",
-    minimize = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/minimize/materialicons/24dp/1x/baseline_minimize_black_24dp.png",
+    home = "https://img.icons8.com/material-rounded/24/ffffff/home.png",
+    player = "https://img.icons8.com/material-rounded/24/ffffff/user.png",
+    farm = "https://img.icons8.com/material-rounded/24/ffffff/flash-on.png",
+    misc = "https://img.icons8.com/material-rounded/24/ffffff/more.png",
+    settings = "https://img.icons8.com/material-rounded/24/ffffff/settings.png",
+    teleport = "https://img.icons8.com/material-rounded/24/ffffff/near-me.png",
+    collapse = "https://img.icons8.com/material-rounded/24/ffffff/chevron-left.png",
+    chevron_right = "https://img.icons8.com/material-rounded/24/ffffff/chevron-right.png",
+    close = "https://img.icons8.com/material-rounded/24/ffffff/multiply.png",
+    minimize = "https://img.icons8.com/material-rounded/24/ffffff/minus.png",
     brand_logo = "https://raw.githubusercontent.com/genjutsu-one/sakuramenu/main/file_000000001c7481f48fc3b980f109afe6.png",
     floating_button = "https://raw.githubusercontent.com/genjutsu-one/sakuramenu/main/file_0000000001308210b2a1abcfd640b720.png",
 }
@@ -247,7 +247,7 @@ end
 
 local function materialImage(kind, parent, size, tint)
     local url = ICON_URLS[kind]
-    local image = url and getCachedAsset(kind, url)
+    local image = url and getCachedAsset(kind .. "_white", url)
     if not image then return nil end
 
     local img = Instance.new("ImageLabel")
