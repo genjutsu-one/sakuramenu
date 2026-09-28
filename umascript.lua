@@ -483,12 +483,11 @@ elseif kind == "logo" then
             ),
             AnchorPoint = Vector2.new(0.5, 0.5),
             Rotation = angle,
-            BackgroundColor3 = CONFIG.SakuraPink,
+            BackgroundColor3 = W,
         }, holder))
 
-        -- мягкое свечение по краю лепестка
         local glow = Instance.new("UIStroke")
-        glow.Color = CONFIG.SakuraPink
+        glow.Color = W
         glow.Transparency = 0.35
         glow.Thickness = 1.2
         glow.Parent = petal
@@ -499,7 +498,7 @@ elseif kind == "logo" then
         Size = UDim2.fromOffset(size * 0.24, size * 0.24),
         Position = UDim2.fromScale(0.5, 0.5),
         AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = Color3.fromRGB(255, 235, 183),
+        BackgroundColor3 = W,
         ZIndex = 2,
     }, holder))
 
@@ -2713,18 +2712,18 @@ local TopBar = newFrame({
 }, MainFrame)
 
 local logoHolder = newFrame({
-    Size = UDim2.fromOffset(26, 26),
+    Size = UDim2.fromOffset(36, 36),
     Position = UDim2.new(0, 16, 0.5, 0),
     AnchorPoint = Vector2.new(0, 0.5),
     BackgroundTransparency = 1,
 }, TopBar)
 
-local logoIcon = drawIcon("logo", logoHolder, 26)
+local logoIcon = drawIcon("logo", logoHolder, 36)
 
 local titleLabel = newLabel({
     Text = "FuckCM",
-    Position = UDim2.new(0, 52, 0, 0),
-    Size = UDim2.new(0, 150, 1, 0),
+    Position = UDim2.new(0, 62, 0, 0),
+    Size = UDim2.new(0, 140, 1, 0),
     TextXAlignment = Enum.TextXAlignment.Left,
     Font = Enum.Font.GothamBold,
     TextSize = 18,
