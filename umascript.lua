@@ -1569,7 +1569,10 @@ local function teleportToKick()
         return false
     end
 
-    root.CFrame = zone.CFrame
+    -- KickReady is a floor trigger. Its center is below the character's
+    -- standing position, so placing the root there can leave the player
+    -- visually at the station without entering the active zone correctly.
+    root.CFrame = zone.CFrame + Vector3.new(0, 3, 0)
     root.AssemblyLinearVelocity = Vector3.zero
     root.AssemblyAngularVelocity = Vector3.zero
     return true
