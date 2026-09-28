@@ -245,7 +245,7 @@ local function getCachedAsset(name, url)
     return nil
 end
 
-local function materialImage(kind, parent, size)
+local function materialImage(kind, parent, size, tint)
     local url = ICON_URLS[kind]
     local image = url and getCachedAsset(kind, url)
     if not image then return nil end
@@ -255,9 +255,12 @@ local function materialImage(kind, parent, size)
     img.Size = UDim2.fromOffset(size, size)
     img.BackgroundTransparency = 1
     img.Image = image
-    img.ImageColor3 = CONFIG.AccentColor
+    img.ImageColor3 = tint or CONFIG.AccentColor
     img.ScaleType = Enum.ScaleType.Fit
     img.Parent = parent
+    if kind == "brand_logo" then
+        corner(math.max(3, math.floor(size * 0.18)), img)
+    end
     return img
 end
 
@@ -282,7 +285,7 @@ if ICONS.custom[kind] then
     return img  
 end  
 
-local imageIcon = materialImage(kind == "logo" and "brand_logo" or kind, parent, size)
+local imageIcon = materialImage(kind == "logo" and "brand_logo" or kind, parent, size, CONFIG.AccentColor)
 if imageIcon then return imageIcon end
 
 local holder = iconHolder(parent, size)  
@@ -509,7 +512,7 @@ end
 local function drawCross(parent, size, color, rot1, rot2)
 local holder = iconHolder(parent, size)
 
-local imageIcon = materialImage(rot2 and "close" or "minimize", holder, size)
+local imageIcon = materialImage(rot2 and "close" or "minimize", holder, size, color)
 if imageIcon then return holder end
 
 local function bar(rot)  
@@ -535,15 +538,17 @@ end
 local function drawChevronRight(parent, size, color)
 local holder = iconHolder(parent, size)
 
-local imageIcon = materialImage("chevron_right", holder, size)
+local imageIcon = materialImage("chevron_right", holder, size, CONFIG.AccentColor)
 if imageIcon then return holder end
+
+local iconColor = CONFIG.AccentColor
 
 corner(size, newFrame({  
     Size = UDim2.fromOffset(size * 0.55, size * 0.16),  
     Position = UDim2.new(0.5, 0, 0.5, -size * 0.18),  
     AnchorPoint = Vector2.new(0.5, 0.5),  
     Rotation = 45,  
-    BackgroundColor3 = color,  
+    BackgroundColor3 = iconColor,  
 }, holder))  
 
 corner(size, newFrame({  
@@ -551,7 +556,7 @@ corner(size, newFrame({
     Position = UDim2.new(0.5, 0, 0.5, size * 0.18),  
     AnchorPoint = Vector2.new(0.5, 0.5),  
     Rotation = -45,  
-    BackgroundColor3 = color,  
+    BackgroundColor3 = iconColor,  
 }, holder))  
 
 return holder
@@ -935,150 +940,204 @@ end
 -- ============================================================
 -- INPUT
 -- ============================================================
--- Applies an asset ID to the currently playing music sounds.
-local function applyMusicId(rawId)
-local id = tostring(rawId):match("rbxassetid://(%d+)") or tostring(rawId):match("(%d+)")
-if not id then
-    print("[Sakura] Set Music: некорректный ID")
-    return nil, 0
-end
-id = "rbxassetid://" .. id
-
-local applied = 0
-for _, s in ipairs(game:GetService("SoundService"):GetDescendants()) do
-if s:IsA("Sound") and s.Playing then
-s.SoundId = id
-s:Play()
-applied = applied + 1
-end
-end
-
-if applied == 0 then
-for _, s in ipairs(workspace:GetDescendants()) do
-if s:IsA("Sound") and s.Playing then
-s.SoundId = id
-s:Play()
-applied = applied + 1
-end
-end
-end
-
-print(("[Sakura] Set Music: %s (заменено звуков: %d)"):format(id, applied))
-return id, applied
-end
-
 local EVENT_MUSIC = {
     { name = "Disco", source = "Disco" },
-    { name = "Stadium", source = "Stadium" },
-    { name = "Training Phase 1", source = "TrainingTime", sound = "Phase1" },
+    { name = "TM Opera O", source = "TM Opera O" },
+    { name = "Meni Shuki Rush", source = "Meni Shuki♡Rush-sh!" },
 }
 
 local function findEventMusic(track)
+    local function findIn(root)
+        if not root then return nil end
+        if root:IsA("Sound") and root.SoundId ~= "" then return root end
+        local sounds = {}
+        for _, descendant in ipairs(root:GetDescendants()) do
+            if descendant:IsA("Sound") and descendant.SoundId ~= "" then
+                table.insert(sounds, descendant)
+            end
+        end
+        table.sort(sounds, function(a, b)
+            local aPreferred = string.find(string.lower(a.Name), "music", 1, true)
+                or string.find(string.lower(a.Name), "song", 1, true)
+            local bPreferred = string.find(string.lower(b.Name), "music", 1, true)
+                or string.find(string.lower(b.Name), "song", 1, true)
+            return aPreferred and not bPreferred
+        end)
+        return sounds[1]
+    end
+
     local soundService = game:GetService("SoundService")
-    local source = soundService:FindFirstChild(track.source)
-    local sound = source and (source:IsA("Sound") and source or source:FindFirstChildWhichIsA("Sound", true))
-    if sound then return sound end
+    local source = findIn(soundService:FindFirstChild(track.source))
+    if source then return source end
 
     local replicatedStorage = game:GetService("ReplicatedStorage")
-    local event = replicatedStorage:FindFirstChild(track.source, true)
-    local candidate = event and event:FindFirstChild(track.sound or "", true)
-    return candidate and candidate:IsA("Sound") and candidate or nil
+    return findIn(replicatedStorage:FindFirstChild(track.source, true))
+end
+
+local activeEventMusic
+local activeEventMusicCleanup
+
+local function playEventMusic(track)
+    local source = findEventMusic(track)
+    if not source then
+        print("[FuckCM] Event music is not loaded: " .. track.name)
+        return false
+    end
+
+    local okController, musicController = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ControllerLoader.MusicController)
+    end)
+    if not okController then
+        print("[FuckCM] MusicController is unavailable")
+        return false
+    end
+
+    if activeEventMusicCleanup then
+        pcall(activeEventMusicCleanup)
+        activeEventMusicCleanup = nil
+    end
+    if activeEventMusic then
+        activeEventMusic:Stop()
+        activeEventMusic:Destroy()
+        activeEventMusic = nil
+    end
+
+    local originalPlaylist = game:GetService("SoundService"):FindFirstChild(track.source)
+    if originalPlaylist then
+        if originalPlaylist:IsA("Sound") then
+            originalPlaylist:Stop()
+        else
+            for _, descendant in ipairs(originalPlaylist:GetDescendants()) do
+                if descendant:IsA("Sound") then descendant:Stop() end
+            end
+        end
+    end
+
+    local okStart, startCustom, cleanup = pcall(function()
+        return musicController:StartCustom()
+    end)
+    if not okStart or type(startCustom) ~= "function" then return false end
+
+    local sound = source:Clone()
+    sound.Name = "FuckCMEventMusic"
+    sound.Looped = true
+    sound.Parent = game:GetService("SoundService")
+    local okPlay = pcall(startCustom, sound)
+    if not okPlay then
+        sound:Destroy()
+        return false
+    end
+
+    activeEventMusic = sound
+    activeEventMusicCleanup = cleanup
+    print("[FuckCM] Music: " .. track.name)
+    return true
+end
+
+local function stopEventMusic()
+    if activeEventMusicCleanup then
+        pcall(activeEventMusicCleanup)
+        activeEventMusicCleanup = nil
+    end
+    if activeEventMusic then
+        activeEventMusic:Stop()
+        activeEventMusic:Destroy()
+        activeEventMusic = nil
+    end
 end
 
 local function createMusicCard(parent, title, desc, key)
-local saved = SavedState.controls[key] or {}
+    local saved = SavedState.controls[key] or {}
+    local card = newFrame({
+        Name = "MusicCard",
+        Size = UDim2.new(1, 0, 0, CARD_H),
+        BackgroundColor3 = CONFIG.CardColor,
+        ClipsDescendants = true,
+    }, parent)
+    corner(8, card)
+    stroke(card, CONFIG.AccentColor, 0.9, 1)
 
-local card = newFrame({
-Name = "MusicCard",
-Size = UDim2.new(1, 0, 0, CARD_H + 32),
-BackgroundColor3 = CONFIG.CardColor,
-}, parent)
-corner(8, card)
-stroke(card, CONFIG.AccentColor, 0.9, 1)
-
-newLabel({  
-    Text = title,  
-    Position = UDim2.new(0, 14, 0, 0),  
-    Size = UDim2.new(1, -164, 1, 0),  
-    TextXAlignment = Enum.TextXAlignment.Left,  
-    Font = Enum.Font.GothamBold,  
-    TextSize = 13,  
-}, card)  
-
-local box = Instance.new("TextBox")  
-box.Name = "MusicId"  
-box.Size = UDim2.fromOffset(64, 26)  
-box.Position = UDim2.new(1, -76, 0.5, 0)  
-box.AnchorPoint = Vector2.new(1, 0.5)  
-box.BackgroundColor3 = CONFIG.BgColor  
-box.TextColor3 = CONFIG.AccentColor  
-box.PlaceholderText = "ID"  
-box.PlaceholderColor3 = CONFIG.MutedTextColor  
-box.Font = Enum.Font.GothamMedium  
-box.TextSize = 13  
-box.ClearTextOnFocus = false  
-box.Text = tostring(saved.text or ""):match("(%d+)") or ""  
-box.Parent = card  
-corner(6, box)  
-stroke(box, CONFIG.AccentColor, 0.85, 1)  
-
-local setButton = newButton({
-    Name = "ApplyMusic",
-    Size = UDim2.fromOffset(54, 26),
-    Position = UDim2.new(1, -14, 0.5, 0),
-    AnchorPoint = Vector2.new(1, 0.5),
-    BackgroundColor3 = CONFIG.OffColor,
-}, card)
-corner(6, setButton)
-newLabel({ Text = "Set", Size = UDim2.fromScale(1, 1), TextSize = 12 }, setButton)
-setButton.MouseButton1Click:Connect(function()
-    local digits = box.Text:match("(%d+)")
-    if not digits then return end
-    local id = applyMusicId(digits)
-    if id then
-        box.Text = digits
-        saveField(key, "text", digits)
-    end
-end)
-
--- три ивентовых трека на выбор
-local presetRow = newFrame({
-    Name = "EventMusic",
-    Size = UDim2.new(1, -28, 0, 26),
-    Position = UDim2.new(0, 14, 0, CARD_H - 2),
-    BackgroundTransparency = 1,
-}, card)
-
-for i, track in ipairs(EVENT_MUSIC) do
-    local b = newButton({
-        Size = UDim2.new(1 / 3, -4, 1, 0),
-        Position = UDim2.new((i - 1) / 3, (i - 1) * 4, 0, 0),
-        BackgroundColor3 = CONFIG.OffColor,
-    }, presetRow)
-    corner(6, b)
     newLabel({
-        Text = track.name,
-        Size = UDim2.fromScale(1, 1),
+        Text = title,
+        Position = UDim2.new(0, 14, 0, 0),
+        Size = UDim2.new(0.42, -14, 0, CARD_H),
+        TextXAlignment = Enum.TextXAlignment.Left,
         Font = Enum.Font.GothamBold,
-        TextSize = 11,
+        TextSize = 13,
         TextTruncate = Enum.TextTruncate.AtEnd,
-    }, b)
-    b.MouseButton1Click:Connect(function()
-        local source = findEventMusic(track)
-        if not source or source.SoundId == "" then
-            print("[Sakura] Event music source unavailable: " .. track.name)
-            return
-        end
-        local id = applyMusicId(source.SoundId)
-        if id then
-            box.Text = id:match("(%d+)") or ""
-            saveField(key, "text", box.Text)
-        end
+    }, card)
+
+    local selectedName = saved.event or "Choose event track"
+    local selector = newButton({
+        Name = "MusicDropdown",
+        Size = UDim2.new(0.54, -4, 0, 30),
+        Position = UDim2.new(1, -10, 0, 9),
+        AnchorPoint = Vector2.new(1, 0),
+        BackgroundColor3 = CONFIG.BgColor,
+        ZIndex = 2,
+    }, card)
+    corner(6, selector)
+    stroke(selector, CONFIG.AccentColor, 0.85, 1)
+    local selectedLabel = newLabel({
+        Text = selectedName,
+        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(1, -34, 1, 0),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize = 12,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        ZIndex = 3,
+    }, selector)
+    local arrow = drawIcon("chevron_right", newFrame({
+        Size = UDim2.fromOffset(16, 16),
+        Position = UDim2.new(1, -22, 0.5, 0),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        ZIndex = 3,
+    }, selector), 16)
+
+    local optionList = newFrame({
+        Name = "MusicOptions",
+        Size = UDim2.new(1, -20, 0, #EVENT_MUSIC * 34),
+        Position = UDim2.new(0, 10, 0, CARD_H),
+        BackgroundTransparency = 1,
+    }, card)
+    local expanded = false
+    selector.MouseButton1Click:Connect(function()
+        expanded = not expanded
+        tween(card, 0.18, {
+            Size = UDim2.new(1, 0, 0, expanded and CARD_H + #EVENT_MUSIC * 34 + 6 or CARD_H),
+        })
+        tween(arrow, 0.18, { Rotation = expanded and 90 or 0 })
     end)
-end
 
-return card
+    for index, track in ipairs(EVENT_MUSIC) do
+        local option = newButton({
+            Name = "TrackOption",
+            Size = UDim2.new(1, 0, 0, 30),
+            Position = UDim2.new(0, 0, 0, (index - 1) * 34),
+            BackgroundColor3 = CONFIG.BgColor,
+        }, optionList)
+        corner(6, option)
+        newLabel({
+            Text = track.name,
+            Position = UDim2.new(0, 10, 0, 0),
+            Size = UDim2.new(1, -20, 1, 0),
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextSize = 12,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+        }, option)
+        option.MouseButton1Click:Connect(function()
+            if playEventMusic(track) then
+                selectedLabel.Text = track.name
+                saveField(key, "event", track.name)
+                expanded = false
+                tween(card, 0.18, { Size = UDim2.new(1, 0, 0, CARD_H) })
+                tween(arrow, 0.18, { Rotation = 0 })
+            end
+        end)
+    end
 
+    return card
 end
 
 -- ============================================================
@@ -1539,84 +1598,137 @@ local KickHandlers
 do
     local lp = Players.LocalPlayer
     local active, token = false, 0
+    local kickEvent
 
     local function isActive(id) return active and token == id end
 
+    local function status(message)
+        print("[FuckCM] Auto Kick: " .. message)
+    end
+
+    local function waitFor(id, condition, timeout)
+        local started = os.clock()
+        while isActive(id) do
+            if condition() then return true end
+            if timeout and os.clock() - started >= timeout then return false end
+            RunService.Heartbeat:Wait()
+        end
+        return false
+    end
+
     local function getKickEvent()
-        local ok, ev = pcall(function()
+        if kickEvent then return kickEvent end
+        local ok, result = pcall(function()
             return game:GetService("ReplicatedStorage")
                 :WaitForChild("Shared", 5)
                 :WaitForChild("Packages", 5)
                 :WaitForChild("Network", 5)
                 :WaitForChild("rev_KickEvent", 5)
         end)
-        return ok and ev or nil
+        if ok and result and result:IsA("RemoteEvent") then
+            kickEvent = result
+        end
+        return kickEvent
     end
 
-    local function isKickGameActive()
-        local ok, handler = pcall(function()
-            return require(game:GetService("ReplicatedStorage")
-                :WaitForChild("Modules", 5)
-                :WaitForChild("ControllerLoader", 5)
-                :WaitForChild("GameHandler", 5))
+    local function getKickButton()
+        local hud = PlayerGui:FindFirstChild("HUD")
+        return hud and hud:FindFirstChild("KickButton")
+    end
+
+    local function busy()
+        return lp:GetAttribute("LocalKickBusy") == true
+            or lp:GetAttribute("IsKicking") == true
+    end
+
+    local function ready()
+        local button = getKickButton()
+        return button ~= nil and button.Visible and not busy()
+    end
+
+    local function getCharacterParts()
+        local character = lp.Character
+        return character and character:FindFirstChildOfClass("Humanoid"),
+            character and character:FindFirstChild("HumanoidRootPart")
+    end
+
+    local function nearKickZone()
+        local _, root = getCharacterParts()
+        local areas = workspace:FindFirstChild("Areas")
+        local zone = areas and areas:FindFirstChild("KickReady")
+        return not (zone and root) or (root.Position - zone.Position).Magnitude <= 20
+    end
+
+    local function cameraFree()
+        local humanoid = getCharacterParts()
+        local camera = workspace.CurrentCamera
+        return humanoid ~= nil and camera.CameraSubject == humanoid
+            and camera.CameraType == Enum.CameraType.Custom
+    end
+
+    local function startKick(id, kickGui)
+        local event = getKickEvent()
+        if not event then
+            status("rev_KickEvent not found")
+            return false
+        end
+        if not isActive(id) or not ready() then return busy() or kickGui.Enabled end
+
+        local ok, err = pcall(function()
+            event:FireServer(1)
         end)
-        return ok and handler.InGame == true
+        local started = waitFor(id, function()
+            return busy() or kickGui.Enabled
+        end, 1.5)
+        if not ok then status(tostring(err)) end
+        return started
     end
 
-    local function waitForKickButton(id, timeout)
-        local started = os.clock()
-        while isActive(id) and os.clock() - started < timeout do
-            local hud = PlayerGui:FindFirstChild("HUD")
-            local button = hud and hud:FindFirstChild("KickButton")
-            if button and button.Visible then return button end
-            task.wait(0.15)
-        end
-        return nil
-    end
+    local function waitKickCycle(id)
+        local startedAt = os.clock()
+        local sawAnchor = false
+        local returnedToZone = false
 
-    local function waitForButtonHidden(id, button, timeout)
-        local started = os.clock()
-        while isActive(id) and button.Parent and button.Visible
-            and os.clock() - started < timeout do
-            task.wait(0.1)
+        while isActive(id) and busy() do
+            local _, root = getCharacterParts()
+            if root then
+                if root.Anchored then sawAnchor = true end
+                local released = sawAnchor and not root.Anchored and cameraFree()
+                local timedOut = os.clock() - startedAt > 45
+                if not returnedToZone and (released or timedOut) then
+                    status(released and "cycle complete, returning to station" or "cycle timeout, returning to station")
+                    task.wait(0.4)
+                    teleportToKick()
+                    returnedToZone = true
+                end
+            end
+            RunService.Heartbeat:Wait()
         end
-        return button.Parent and not button.Visible
     end
 
     local function loop(id)
-        while isActive(id) and not lp:FindFirstChild("ClientLoader") do
-            task.wait(0.25)
-        end
-        if not isActive(id) then return end
-
-        local kickEvent = getKickEvent()
-        if not (kickEvent and kickEvent:IsA("RemoteEvent")) then
-            print("[Sakura] Auto Kick: rev_KickEvent не найден")
+        local kickGui = PlayerGui:WaitForChild("KickMinigame")
+        if not getKickEvent() then
+            status("rev_KickEvent not found")
             return
         end
 
-        local args = { 1 }
         while isActive(id) do
-            local button = waitForKickButton(id, 1)
-            if not button then
-                if not isKickGameActive() then
-                    teleportToKick()
-                end
-                button = waitForKickButton(id, 3)
-            end
-
-            if button and isActive(id) then
-                local ok, err = pcall(function()
-                    kickEvent:FireServer(table.unpack(args))
-                end)
-                if not ok then
-                    print("[Sakura] Auto Kick: " .. tostring(err))
-                    task.wait(1)
-                elseif waitForButtonHidden(id, button, 4) then
-                    waitForKickButton(id, 90)
+            if busy() then
+                waitKickCycle(id)
+            elseif not nearKickZone() then
+                status("teleporting to kick station")
+                teleportToKick()
+                waitFor(id, ready, 3)
+            elseif ready() then
+                if not startKick(id, kickGui) then
+                    status("kick did not start")
+                    waitFor(id, function() return false end, 1)
                 else
-                    task.wait(1)
+                    waitKickCycle(id)
                 end
+            else
+                RunService.Heartbeat:Wait()
             end
         end
     end
@@ -2165,6 +2277,30 @@ local function getEquippedWeightTool()
     return tool and tool:IsA("Tool") and tool or nil
 end
 
+local function teleportToWeightShop()
+    local touchPart = findFirst(workspace, "Shops", "WeightShop", "TouchPart")
+    if not (touchPart and touchPart:IsA("BasePart")) then
+        touchPart = findFirst(workspace, "Shops", "WeightShop")
+        if touchPart and not touchPart:IsA("BasePart") then
+            touchPart = touchPart:FindFirstChildWhichIsA("BasePart", true)
+        end
+    end
+
+    local root = Players.LocalPlayer.Character
+        and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not (touchPart and root) then
+        print("[FuckCM] WeightShop.TouchPart not found")
+        return false
+    end
+
+    root.CFrame = touchPart.CFrame + Vector3.new(0, 3, 0)
+    task.wait(0.25)
+    local frames = PlayerGui:FindFirstChild("Frames")
+    local weightUi = frames and frames:FindFirstChild("WeightUI")
+    if weightUi then weightUi.Visible = true end
+    return true
+end
+
 local AutoTrainingHandlers
 do
     local active, token = false, 0
@@ -2208,6 +2344,62 @@ do
         end,
     }
 end
+
+local AutoBuyWeightHandlers = makeLoopToggle("Auto Buy Silver Weight", function()
+    local ok, weightService = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.WeightServiceClient)
+    end)
+    if ok and type(weightService.Owned) == "table"
+        and table.find(weightService.Owned, "Silver Weight") then
+        return
+    end
+
+    if not teleportToWeightShop() then return end
+    local net = getNetwork()
+    if not net then return end
+    net:WaitForChild("rev_Shop_Buy", 5):FireServer("WeightShop", "Silver Weight")
+end, 8)
+
+local AutoRebirthHandlers
+do
+    local lastRequestedLevel = -1
+    local lastRequestAt = 0
+    AutoRebirthHandlers = makeLoopToggle("Auto Rebirth", function()
+        local replicatedStorage = game:GetService("ReplicatedStorage")
+        local okRebirth, rebirthService = pcall(function()
+            return require(replicatedStorage.Modules.ServicesLoader.RebirthServiceClient)
+        end)
+        local okKick, kickService = pcall(function()
+            return require(replicatedStorage.Modules.ServicesLoader.KickServiceClient)
+        end)
+        local okData, rebirthData = pcall(function()
+            return require(replicatedStorage.Shared.Data.RebirthData)
+        end)
+        if not (okRebirth and okKick and okData) then return end
+
+        local level = rebirthService.RebirthLevel or 0
+        local requirement = rebirthData:GetKickRequirement(level + 1)
+        if (tonumber(kickService.Level) or 0) < requirement then return end
+        if level == lastRequestedLevel and os.clock() - lastRequestAt < 15 then return end
+
+        local net = getNetwork()
+        if not net then return end
+        net:WaitForChild("rev_RebirthRequest", 5):FireServer()
+        lastRequestedLevel = level
+        lastRequestAt = os.clock()
+    end, 2)
+end
+
+local AutoPlotUpgradeHandlers = makeLoopToggle("Auto Plot Upgrade", function()
+    local ok, upgrades = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.BaseUpgradesServiceClient)
+    end)
+    if not ok or upgrades.AddedSlots >= upgrades.MAX_SLOTS then return end
+
+    local net = getNetwork()
+    if not net then return end
+    net:WaitForChild("rev_bs_upgrade", 5):FireServer()
+end, 2)
 
 -- продаёт всех Umas одним вызовом; телепортируется к NPC SellUma,
 -- т.к. сервер может проверять близость к точке продажи
@@ -2260,38 +2452,7 @@ local function teleportToSell()
 end
 
 local function teleportToShop()
-    local npcs = workspace:FindFirstChild("NPCs")
-    local shop = npcs and (npcs:FindFirstChild("Shop Guy") or npcs:FindFirstChild("ShopGuy") or npcs:FindFirstChild("Shop"))
-    local target
-    if shop then
-        if shop:IsA("BasePart") then
-            target = shop
-        else
-            local hitbox = shop:FindFirstChild("Hitbox", true)
-            if hitbox and hitbox:IsA("BasePart") then
-                target = hitbox
-            end
-            if not target and shop:IsA("Model") then
-                target = shop.PrimaryPart
-            end
-            target = target or shop:FindFirstChildWhichIsA("BasePart", true)
-        end
-    end
-    local char = Players.LocalPlayer.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if target and target:IsA("BasePart") and root then
-        local position = target.Position - target.CFrame.LookVector * 4 + Vector3.new(0, 1, 0)
-        root.CFrame = CFrame.lookAt(position, target.Position)
-    end
-
-    task.wait(0.35)
-    local frames = PlayerGui:FindFirstChild("Frames")
-    local store = frames and frames:FindFirstChild("Store")
-    if store then
-        store.Visible = true
-    else
-        print("[Sakura] Teleport to Shop: shop UI not found")
-    end
+    teleportToWeightShop()
 end
 
 local function rejoinServer()
@@ -2426,6 +2587,18 @@ onClick = sellHeldUma,
         {
             title = "Auto Training Weight",
             handlers = AutoTrainingHandlers
+        },
+        {
+            title = "Auto Buy Silver Weight",
+            handlers = AutoBuyWeightHandlers
+        },
+        {
+            title = "Auto Rebirth",
+            handlers = AutoRebirthHandlers
+        },
+        {
+            title = "Auto Plot Upgrade",
+            handlers = AutoPlotUpgradeHandlers
         },
         {
             title = "Sell All Umas",
@@ -3108,6 +3281,7 @@ elseif tab.id == "home" then
     end
 
     local speedService
+    local kickService
     local function getSpeedValue()
         if speedService == nil then
             local ok, svc = pcall(function()
@@ -3133,6 +3307,22 @@ elseif tab.id == "home" then
         return nil
     end
 
+    local function getKickPowerValue()
+        if kickService == nil then
+            local ok, service = pcall(function()
+                return require(
+                    game:GetService("ReplicatedStorage").Modules.ServicesLoader.KickServiceClient
+                )
+            end)
+            kickService = ok and service or false
+        end
+        if kickService then
+            local level = tonumber(kickService.Level)
+            if level then return level end
+        end
+        return Players.LocalPlayer:GetAttribute("SelectedKickPower")
+    end
+
     local function refreshStats()
         local lp = Players.LocalPlayer
         local ls = lp:FindFirstChild("leaderstats")
@@ -3140,7 +3330,7 @@ elseif tab.id == "home" then
         local cash = ls and ls:FindFirstChild("Cash")
         statLabels["Cash"].Text = "Cash: " .. (cash and fmt(cash.Value) or "—")
 
-        local kp = lp:GetAttribute("SelectedKickPower")
+        local kp = getKickPowerValue()
         statLabels["Kick Power"].Text = "Kick Power: " .. (kp and fmt(kp) or "—")
 
         local speedVal = getSpeedValue()
@@ -3614,6 +3804,7 @@ SpeedHandlers.onToggle(false)
     AutoTrainingHandlers.onToggle(false)
     SpeedUpgradeHandlers.onToggle(false)
     AutoUpgradeHandlers.onToggle(false)
+    stopEventMusic()
 
     for _, c in ipairs(  
         connections  
