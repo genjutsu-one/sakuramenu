@@ -3816,6 +3816,7 @@ end
 
 )
 
+local function buildAutoFarmUI()
 local farmReplicatedStorage = game:GetService("ReplicatedStorage")
 local farmEntities, farmRarityData, farmMutationData, farmKickData
 pcall(function()
@@ -4465,6 +4466,10 @@ pcall(function()
         if autoFarmRefresh then autoFarmRefresh() end
     end)
 end)
+
+end
+
+buildAutoFarmUI()
 
 local FLOAT_SIZE = 46
 
