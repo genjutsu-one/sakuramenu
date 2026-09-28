@@ -66,7 +66,13 @@ if ok and type(decoded) == "table" then
     SavedState = decoded  
 end  
 
-SavedState.controls = SavedState.controls or {}
+local settingsOnly = {}
+for key, value in pairs(type(SavedState.controls) == "table" and SavedState.controls or {}) do
+    if string.sub(key, 1, 9) == "settings_" then
+        settingsOnly[key] = value
+    end
+end
+SavedState.controls = settingsOnly
 
 end
 
@@ -84,12 +90,14 @@ end
 end
 
 local function saveField(key, field, value)
+if string.sub(key, 1, 9) ~= "settings_" then return end
 SavedState.controls[key] = SavedState.controls[key] or {}
 SavedState.controls[key][field] = value
 SaveConfig()
 end
 
 LoadConfig()
+SaveConfig()
 
 do
 local t = SavedState.controls["settings_transparency"]
@@ -191,7 +199,7 @@ custom = {}
 }
 
 local ICON_URLS = {
-    home = "https://img.icons8.com/material-rounded/24/ffffff/home.png",
+    home_outline = "https://img.icons8.com/material-outlined/24/ffffff/home.png",
     player = "https://img.icons8.com/material-rounded/24/ffffff/user.png",
     farm = "https://img.icons8.com/material-rounded/24/ffffff/flash-on.png",
     misc = "https://img.icons8.com/material-rounded/24/ffffff/more.png",
@@ -285,10 +293,10 @@ if ICONS.custom[kind] then
     return img  
 end  
 
-if kind ~= "home" then
-    local imageIcon = materialImage(kind == "logo" and "brand_logo" or kind, parent, size, CONFIG.AccentColor)
-    if imageIcon then return imageIcon end
-end
+local assetName = kind == "logo" and "brand_logo" or kind
+if kind == "home" then assetName = "home_outline" end
+local imageIcon = materialImage(assetName, parent, size, CONFIG.AccentColor)
+if imageIcon then return imageIcon end
 
 local holder = iconHolder(parent, size)  
 local W = CONFIG.AccentColor  
@@ -652,7 +660,7 @@ local function createCard(parent, title, desc, key, opts)
 opts = opts or {}
 
 local saved = SavedState.controls[key] or {}  
-local on = saved.on or false  
+local on = false
 local expandedH = opts.expandedH  
 
 local card = newFrame({  
@@ -704,8 +712,6 @@ end
 
 createToggle(toggleHolder, on, function(state)  
     on = state  
-    saveField(key, "on", state)  
-
     if expandedH then  
         tween(card, CONFIG.ExpandTime, {  
             Size = UDim2.new(  
@@ -1371,13 +1377,11 @@ end
 -- ============================================================
 -- SPEED
 -- ============================================================
-local savedSpeed = SavedState.controls["player_3"] or {}
-
 local SPEED_SCALE = 4 -- слайдер 1-100 даёт WalkSpeed до 400 вместо 100
 
 local Speed = {
-enabled = savedSpeed.on or false,
-value = savedSpeed.value or 50,
+enabled = false,
+value = 50,
 original = 16,
 }
 
@@ -1484,10 +1488,9 @@ end,
 -- ============================================================
 local JUMP_SCALE = 2 -- слайдер 1-100 даёт JumpPower до 200
 
-local savedJump = SavedState.controls["player_1"] or {}
 local Jump = {
-    enabled = savedJump.on or false,
-    value = savedJump.value or 50,
+    enabled = false,
+    value = 50,
     original = 50,
 }
 
@@ -1526,48 +1529,99 @@ local JumpHandlers = {
 -- FLY
 -- ============================================================
 local FLY_SPEED = 80
-
 local Fly = { enabled = false }
+local flyVelocity
+local flyGyro
+local flyHumanoid
+local flyControlModule
+local flyConnection
 
 local function stopFly()
     Fly.enabled = false
-    local hum = getHumanoid()
-    if hum then hum.PlatformStand = false end
+    if flyConnection then
+        flyConnection:Disconnect()
+        flyConnection = nil
+    end
+    if flyVelocity then flyVelocity:Destroy(); flyVelocity = nil end
+    if flyGyro then flyGyro:Destroy(); flyGyro = nil end
+    if flyHumanoid then flyHumanoid.PlatformStand = false; flyHumanoid = nil end
+end
+
+local function startFly()
+    stopFly()
+    local player = Players.LocalPlayer
+    local character = player.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if not (root and humanoid) then return false end
+
+    local ok, controlModule = pcall(function()
+        return require(player.PlayerScripts:WaitForChild("PlayerModule")
+            :WaitForChild("ControlModule"))
+    end)
+    if not ok or type(controlModule.GetMoveVector) ~= "function" then
+        warn("[FuckCM] Fly: PlayerModule ControlModule unavailable")
+        return false
+    end
+
+    Fly.enabled = true
+    flyHumanoid = humanoid
+    flyControlModule = controlModule
+    flyVelocity = Instance.new("BodyVelocity")
+    flyVelocity.Name = "FuckCMFlyVelocity"
+    flyVelocity.MaxForce = Vector3.zero
+    flyVelocity.Velocity = Vector3.zero
+    flyVelocity.Parent = root
+
+    flyGyro = Instance.new("BodyGyro")
+    flyGyro.Name = "FuckCMFlyGyro"
+    flyGyro.P = 1000
+    flyGyro.D = 50
+    flyGyro.MaxTorque = Vector3.zero
+    flyGyro.CFrame = root.CFrame
+    flyGyro.Parent = root
+
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if not Fly.enabled or not root.Parent or not humanoid.Parent then
+            stopFly()
+            return
+        end
+
+        local camera = workspace.CurrentCamera
+        if not camera then return end
+        flyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        flyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        flyGyro.CFrame = camera.CFrame
+        humanoid.PlatformStand = true
+
+        local move = controlModule:GetMoveVector()
+        local vertical = 0
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then vertical += 1 end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+            or UserInputService:IsKeyDown(Enum.KeyCode.C) then
+            vertical -= 1
+        end
+
+        local velocity = camera.CFrame.RightVector * move.X
+            - camera.CFrame.LookVector * move.Z
+            + Vector3.new(0, vertical, 0)
+        flyVelocity.Velocity = velocity.Magnitude > 0.01
+            and velocity.Unit * FLY_SPEED
+            or Vector3.zero
+    end)
+    return true
 end
 
 bind(Players.LocalPlayer.CharacterAdded, function()
-    Fly.enabled = false
-end)
-
-bind(RunService.Heartbeat, function()
-    if not Fly.enabled then return end
-
-    local hum = getHumanoid()
-    local root = hum and hum.RootPart
-    if not (hum and root) then
-        stopFly()
-        return
-    end
-
-    hum.PlatformStand = true
-
-    local cam = workspace.CurrentCamera
-    local look = cam.CFrame.LookVector
-    local move = hum.MoveDirection -- плоское направление со стика, уже относительно камеры
-
-    if move.Magnitude > 0.05 then
-        local horiz = move.Unit * FLY_SPEED
-        local vert = look.Y * FLY_SPEED
-        root.AssemblyLinearVelocity = Vector3.new(horiz.X, vert, horiz.Z)
-    else
-        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-    end
+    stopFly()
 end)
 
 local FlyHandlers = {
     onToggle = function(state)
         if state then
-            Fly.enabled = true
+            if not startFly() then
+                Fly.enabled = false
+            end
         else
             stopFly()
         end
@@ -2394,6 +2448,17 @@ local AutoPlotUpgradeHandlers = makeLoopToggle("Auto Plot Upgrade", function()
     end)
     if not ok or upgrades.AddedSlots >= upgrades.MAX_SLOTS then return end
 
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    local okBalance, balance = pcall(function()
+        return require(replicatedStorage.Modules.ServicesLoader.ClientBalanceService)
+    end)
+    local okPrices, prices = pcall(function()
+        return require(replicatedStorage.Shared.Data.SlotUpgradesData)
+    end)
+    if not (okBalance and okPrices) then return end
+    local price = prices:GetPrice(upgrades.AddedSlots + 1)
+    if not price or balance.Balance < price then return end
+
     local net = getNetwork()
     if not net then return end
     net:WaitForChild("rev_bs_upgrade", 5):FireServer()
@@ -2505,6 +2570,17 @@ do
     }
 end
 
+local function claimFreeGift()
+    local net = getNetwork()
+    if not net then return end
+    local ok, err = pcall(function()
+        net:WaitForChild("rev_IndexRewards_Request", 5):FireServer()
+    end)
+    if not ok then
+        warn("[FuckCM] Claim Free Gift failed: " .. tostring(err))
+    end
+end
+
 -- ============================================================
 -- ТАБЫ
 -- ============================================================
@@ -2609,6 +2685,7 @@ onClick = sellHeldUma,
     name = "Misc",
     funcs = {
         { title = "Set Music", type = "music" },
+        { title = "Claim Free Gift", type = "action", onClick = claimFreeGift },
         { title = "FPS Boost", handlers = FpsBoostHandlers },
         { title = "Anti-AFK", handlers = AntiAfkHandlers },
         { title = "Rejoin Server", type = "action", onClick = rejoinServer },
@@ -3798,6 +3875,7 @@ btnClose.MouseButton1Click:Connect(
 function()
 
 SpeedHandlers.onToggle(false)  
+    FlyHandlers.onToggle(false)
     KickHandlers.onToggle(false)
     AutoTrainingHandlers.onToggle(false)
     SpeedUpgradeHandlers.onToggle(false)
