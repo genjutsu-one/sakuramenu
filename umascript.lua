@@ -1643,7 +1643,11 @@ do
 
     local function ready()
         local button = getKickButton()
-        return button ~= nil and button.Visible and not busy()
+        local character = lp.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        local grounded = humanoid ~= nil
+            and humanoid.FloorMaterial ~= Enum.Material.Air
+        return button ~= nil and button.Visible and grounded and not busy()
     end
 
     local function getCharacterParts()
@@ -3463,7 +3467,7 @@ elseif tab.id == "home" then
             n = n / 1000
             i = i + 1
         end
-        return string.format("%.2f%s", n, units[i])
+        return string.format("%.0f%s", n, units[i])
     end
 
     local speedService
