@@ -3791,7 +3791,7 @@ CONFIG.AccentColor,
 2
 )
 
-local floatingImage = ICON_URLS.floating_button
+local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
 if floatingImage then
     local image = Instance.new("ImageLabel")
     image.Name = "BrandImage"
