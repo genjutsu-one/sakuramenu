@@ -285,8 +285,10 @@ if ICONS.custom[kind] then
     return img  
 end  
 
-local imageIcon = materialImage(kind == "logo" and "brand_logo" or kind, parent, size, CONFIG.AccentColor)
-if imageIcon then return imageIcon end
+if kind ~= "home" then
+    local imageIcon = materialImage(kind == "logo" and "brand_logo" or kind, parent, size, CONFIG.AccentColor)
+    if imageIcon then return imageIcon end
+end
 
 local holder = iconHolder(parent, size)  
 local W = CONFIG.AccentColor  
@@ -383,38 +385,35 @@ elseif kind == "settings" then
     }, holder))  
 
 elseif kind == "home" then
-    -- Material-style home silhouette
-    corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.62, size * 0.19),
-        Position = UDim2.new(0.5, -size * 0.13, 0.5, -size * 0.2),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Rotation = 45,
-        BackgroundColor3 = W,
-    }, holder))
+    local scale = size / 24
+    local thickness = math.max(1.2, size * 2 / 24)
 
-    corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.62, size * 0.19),
-        Position = UDim2.new(0.5, size * 0.13, 0.5, -size * 0.2),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Rotation = -45,
-        BackgroundColor3 = W,
-    }, holder))
+    local function line(x1, y1, x2, y2)
+        local dx, dy = x2 - x1, y2 - y1
+        local length = math.sqrt(dx * dx + dy * dy) * scale
+        local segment = newFrame({
+            Size = UDim2.fromOffset(length, thickness),
+            Position = UDim2.new(
+                0.5,
+                ((x1 + x2) * 0.5 - 12) * scale,
+                0.5,
+                ((y1 + y2) * 0.5 - 12) * scale
+            ),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Rotation = math.deg(math.atan2(dy, dx)),
+            BackgroundColor3 = W,
+        }, holder)
+        corner(thickness, segment)
+    end
 
-    -- корпус
-    corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.58, size * 0.38),
-        Position = UDim2.new(0.5, 0, 1, 0),
-        AnchorPoint = Vector2.new(0.5, 1),
-        BackgroundColor3 = W,
-    }, holder))
-
-    -- дверь
-    corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.15, size * 0.2),
-        Position = UDim2.new(0.5, 0, 1, -size * 0.02),
-        AnchorPoint = Vector2.new(0.5, 1),
-        BackgroundColor3 = CONFIG.BgColor,
-    }, holder))
+    line(3.7, 9.4, 10.7, 3.4)
+    line(13.3, 3.4, 20.3, 9.4)
+    line(3, 10, 3, 19)
+    line(21, 10, 21, 19)
+    line(5, 21, 19, 21)
+    line(9, 13, 9, 20)
+    line(9, 12, 14, 12)
+    line(15, 13, 15, 20)
 
 elseif kind == "teleport" then  
 
