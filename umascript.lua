@@ -16,6 +16,7 @@ local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local CONFIG = {
 WidthScale       = 0.8,
 HeightScale      = 0.75,
+Transparency     = 0.5,
 BgColor          = Color3.fromRGB(15, 15, 17),  
 CardColor        = Color3.fromRGB(24, 24, 27),  
 AccentColor      = Color3.fromRGB(255, 255, 255),  
@@ -91,7 +92,12 @@ end
 LoadConfig()
 
 do
+local t = SavedState.controls["settings_transparency"]
 local s = SavedState.controls["settings_size"]
+
+if t and t.value then
+    CONFIG.Transparency = 1 - (t.value / 100)
+end
 
 if s and s.value then  
     CONFIG.WidthScale  = BASE_WIDTH_SCALE  * (s.value / 100)  
@@ -184,6 +190,77 @@ local ICONS = {
 custom = {}
 }
 
+local ICON_URLS = {
+    home = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/home/materialicons/24dp/1x/baseline_home_black_24dp.png",
+    player = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/account_circle/materialicons/24dp/1x/baseline_account_circle_black_24dp.png",
+    farm = "https://raw.githubusercontent.com/google/material-design-icons/master/png/content/bolt/materialicons/24dp/1x/baseline_bolt_black_24dp.png",
+    misc = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/more_horiz/materialicons/24dp/1x/baseline_more_horiz_black_24dp.png",
+    settings = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/settings/materialicons/24dp/1x/baseline_settings_black_24dp.png",
+    teleport = "https://raw.githubusercontent.com/google/material-design-icons/master/png/maps/my_location/materialicons/24dp/1x/baseline_my_location_black_24dp.png",
+    collapse = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/chevron_left/materialicons/24dp/1x/baseline_chevron_left_black_24dp.png",
+    chevron_right = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/chevron_right/materialicons/24dp/1x/baseline_chevron_right_black_24dp.png",
+    close = "https://raw.githubusercontent.com/google/material-design-icons/master/png/navigation/close/materialicons/24dp/1x/baseline_close_black_24dp.png",
+    minimize = "https://raw.githubusercontent.com/google/material-design-icons/master/png/action/minimize/materialicons/24dp/1x/baseline_minimize_black_24dp.png",
+    brand_logo = "https://raw.githubusercontent.com/genjutsu-one/sakuramenu/main/file_000000001c7481f48fc3b980f109afe6.png",
+    floating_button = "https://raw.githubusercontent.com/genjutsu-one/sakuramenu/main/file_0000000001308210b2a1abcfd640b720.png",
+}
+
+local assetCache = {}
+
+local function getCachedAsset(name, url)
+    local setter = getcustomasset or getsynasset
+    if not setter or not writefile or not game.HttpGet then return nil end
+    if assetCache[name] then return assetCache[name] end
+
+    local folder = CONFIG_FOLDER .. "/assets"
+    local path = folder .. "/" .. name .. ".png"
+    pcall(function()
+        if makefolder and isfolder and not isfolder(CONFIG_FOLDER) then
+            makefolder(CONFIG_FOLDER)
+        end
+        if makefolder and isfolder and not isfolder(folder) then
+            makefolder(folder)
+        end
+    end)
+
+    local exists = false
+    if isfile then
+        local ok, result = pcall(isfile, path)
+        exists = ok and result
+    end
+    if not exists then
+        local ok, data = pcall(function() return game:HttpGet(url) end)
+        if not ok or type(data) ~= "string" then return nil end
+        local a, b, c, d = string.byte(data, 1, 4)
+        if a ~= 137 or b ~= 80 or c ~= 78 or d ~= 71 then return nil end
+        local written = pcall(writefile, path, data)
+        if not written then return nil end
+    end
+
+    local ok, asset = pcall(setter, path)
+    if ok then
+        assetCache[name] = asset
+        return asset
+    end
+    return nil
+end
+
+local function materialImage(kind, parent, size)
+    local url = ICON_URLS[kind]
+    local image = url and getCachedAsset(kind, url)
+    if not image then return nil end
+
+    local img = Instance.new("ImageLabel")
+    img.Name = kind .. "Icon"
+    img.Size = UDim2.fromOffset(size, size)
+    img.BackgroundTransparency = 1
+    img.Image = image
+    img.ImageColor3 = CONFIG.AccentColor
+    img.ScaleType = Enum.ScaleType.Fit
+    img.Parent = parent
+    return img
+end
+
 local function iconHolder(parent, size)
 return newFrame({
 Name = "IconHolder",
@@ -204,6 +281,9 @@ if ICONS.custom[kind] then
     img.Parent = parent  
     return img  
 end  
+
+local imageIcon = materialImage(kind == "logo" and "brand_logo" or kind, parent, size)
+if imageIcon then return imageIcon end
 
 local holder = iconHolder(parent, size)  
 local W = CONFIG.AccentColor  
@@ -429,6 +509,9 @@ end
 local function drawCross(parent, size, color, rot1, rot2)
 local holder = iconHolder(parent, size)
 
+local imageIcon = materialImage(rot2 and "close" or "minimize", holder, size)
+if imageIcon then return holder end
+
 local function bar(rot)  
     corner(2, newFrame({  
         Size = UDim2.fromOffset(size, 3),  
@@ -451,6 +534,9 @@ end
 
 local function drawChevronRight(parent, size, color)
 local holder = iconHolder(parent, size)
+
+local imageIcon = materialImage("chevron_right", holder, size)
+if imageIcon then return holder end
 
 corner(size, newFrame({  
     Size = UDim2.fromOffset(size * 0.55, size * 0.16),  
@@ -1467,42 +1553,68 @@ do
         return ok and ev or nil
     end
 
-    local function busy()
-        return lp:GetAttribute("LocalKickBusy") == true
-            or lp:GetAttribute("IsKicking") == true
+    local function isKickGameActive()
+        local ok, handler = pcall(function()
+            return require(game:GetService("ReplicatedStorage")
+                :WaitForChild("Modules", 5)
+                :WaitForChild("ControllerLoader", 5)
+                :WaitForChild("GameHandler", 5))
+        end)
+        return ok and handler.InGame == true
     end
 
-    -- ждёт, пока цикл удара (миниигра + гача) завершится
-    local function waitClear(id, timeout)
-        local t0 = os.clock()
-        while isActive(id) and busy() and os.clock() - t0 < (timeout or 90) do
-            RunService.Heartbeat:Wait()
+    local function waitForKickButton(id, timeout)
+        local started = os.clock()
+        while isActive(id) and os.clock() - started < timeout do
+            local hud = PlayerGui:FindFirstChild("HUD")
+            local button = hud and hud:FindFirstChild("KickButton")
+            if button and button.Visible then return button end
+            task.wait(0.15)
         end
-        return not busy()
+        return nil
+    end
+
+    local function waitForButtonHidden(id, button, timeout)
+        local started = os.clock()
+        while isActive(id) and button.Parent and button.Visible
+            and os.clock() - started < timeout do
+            task.wait(0.1)
+        end
+        return button.Parent and not button.Visible
     end
 
     local function loop(id)
-        lp:WaitForChild("ClientLoader")
+        while isActive(id) and not lp:FindFirstChild("ClientLoader") do
+            task.wait(0.25)
+        end
+        if not isActive(id) then return end
 
         local kickEvent = getKickEvent()
-        if not kickEvent then
+        if not (kickEvent and kickEvent:IsA("RemoteEvent")) then
             print("[Sakura] Auto Kick: rev_KickEvent не найден")
             return
         end
 
         local args = { 1 }
         while isActive(id) do
-            if busy() then
-                waitClear(id, 90)
-            else
+            local button = waitForKickButton(id, 1)
+            if not button then
+                if not isKickGameActive() then
+                    teleportToKick()
+                end
+                button = waitForKickButton(id, 3)
+            end
+
+            if button and isActive(id) then
                 local ok, err = pcall(function()
                     kickEvent:FireServer(table.unpack(args))
                 end)
                 if not ok then
                     print("[Sakura] Auto Kick: " .. tostring(err))
                     task.wait(1)
+                elseif waitForButtonHidden(id, button, 4) then
+                    waitForKickButton(id, 90)
                 else
-                    waitClear(id, 90)
                     task.wait(1)
                 end
             end
@@ -2403,7 +2515,7 @@ Size =
 BackgroundColor3 =  
     CONFIG.BgColor,  
 
-BackgroundTransparency = 0,  
+BackgroundTransparency = CONFIG.Transparency,  
 
 ClipsDescendants = true,
 
@@ -2435,17 +2547,9 @@ local logoHolder = newFrame({
 }, TopBar)
 
 local logoIcon = drawIcon("logo", logoHolder, 26)
-for _, part in ipairs(logoIcon:GetChildren()) do
-    if part:IsA("Frame") then
-        attachShimmer(part, Color3.fromRGB(255, 78, 139), Color3.fromRGB(255, 232, 241), 2.4)
-    end
-end
-bind(RunService.RenderStepped, function(dt)
-    logoIcon.Rotation = (logoIcon.Rotation + dt * 3.2) % 360
-end)
 
 local titleLabel = newLabel({
-    Text = "Sakura",
+    Text = "FuckCM",
     Position = UDim2.new(0, 52, 0, 0),
     Size = UDim2.new(0, 150, 1, 0),
     TextXAlignment = Enum.TextXAlignment.Left,
@@ -2862,10 +2966,24 @@ newLabel({
 }, page)  
 
 if tab.id == "settings" then  
+    local sT = SavedState.controls["settings_transparency"]
     local sS =  
         SavedState.controls[  
             "settings_size"  
         ]  
+
+    createPercentRow(
+        page,
+        "Transparency",
+        {50, 60, 70, 80, 90, 100},
+        (sT and sT.value) or 50,
+        function(val)
+            CONFIG.Transparency = 1 - (val / 100)
+            MainFrame.BackgroundTransparency = CONFIG.Transparency
+            SavedState.controls["settings_transparency"] = { value = val }
+            SaveConfig()
+        end
+    ).LayoutOrder = 1
 
     createPercentRow(  
         page,  
@@ -2902,7 +3020,7 @@ if tab.id == "settings" then
 
             SaveConfig()  
         end  
-    ).LayoutOrder = 1  
+    ).LayoutOrder = 2  
 
 elseif tab.id == "home" then
 
@@ -3330,14 +3448,26 @@ CONFIG.SakuraPink,
 2
 )
 
-newLabel({
-Text = "S",
-Size = UDim2.fromScale(1, 1),
-Font = Enum.Font.GothamBlack,
-TextSize = 20,
-TextColor3 = CONFIG.SakuraPink,
-ZIndex = 3,
-}, FloatBtn)
+local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
+if floatingImage then
+    local image = Instance.new("ImageLabel")
+    image.Name = "BrandImage"
+    image.Size = UDim2.fromScale(1, 1)
+    image.BackgroundTransparency = 1
+    image.Image = floatingImage
+    image.ScaleType = Enum.ScaleType.Fit
+    image.ZIndex = 3
+    image.Parent = FloatBtn
+else
+    newLabel({
+        Text = "F",
+        Size = UDim2.fromScale(1, 1),
+        Font = Enum.Font.GothamBlack,
+        TextSize = 20,
+        TextColor3 = CONFIG.SakuraPink,
+        ZIndex = 3,
+    }, FloatBtn)
+end
 
 do
 local dragging = false
@@ -3433,7 +3563,7 @@ FloatBtn.MouseButton1Click:Connect(
                         CONFIG.HeightScale  
                     ),  
 
-                BackgroundTransparency = 0,  
+                BackgroundTransparency = CONFIG.Transparency,
             },  
             Enum.EasingStyle.Back  
         )  
@@ -3516,7 +3646,7 @@ CONFIG.WidthScale,
 CONFIG.HeightScale
 ),
 
-BackgroundTransparency = 0,  
+BackgroundTransparency = CONFIG.Transparency,  
 },  
 Enum.EasingStyle.Back
 
