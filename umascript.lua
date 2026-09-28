@@ -1,7 +1,3 @@
---[[ Sakura Menu v1.3
-Конфиг: <Workspace экзекьютора>/SakuraMenu/config.json
-]]
-
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService       = game:GetService("RunService")
@@ -10,9 +6,6 @@ local Players          = game:GetService("Players")
 
 local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- ============================================================
--- КОНФИГ
--- ============================================================
 local CONFIG = {
 WidthScale       = 0.8,
 HeightScale      = 0.75,
@@ -22,8 +15,7 @@ CardColor        = Color3.fromRGB(24, 24, 27),
 AccentColor      = Color3.fromRGB(255, 255, 255),  
 MutedTextColor   = Color3.fromRGB(160, 160, 165),  
 OnColor          = Color3.fromRGB(255, 255, 255),  
-OffColor         = Color3.fromRGB(55, 55, 58),  
-SakuraPink       = Color3.fromRGB(255, 104, 156),  
+OffColor         = Color3.fromRGB(55, 55, 58),    
 CloseColor       = Color3.fromRGB(255, 80, 80),  
 
 SidebarExpanded  = 170,  
@@ -38,7 +30,6 @@ local BASE_WIDTH_SCALE  = CONFIG.WidthScale
 local BASE_HEIGHT_SCALE = CONFIG.HeightScale
 local CARD_H = 48
 
--- глобальные подключения
 local connections = {}
 
 local function bind(signal, fn)
@@ -47,10 +38,7 @@ table.insert(connections, c)
 return c
 end
 
--- ============================================================
--- СОХРАНЕНИЕ
--- ============================================================
-local CONFIG_FOLDER = "SakuraMenu"
+local CONFIG_FOLDER = "FuckCM"
 local CONFIG_FILE   = CONFIG_FOLDER .. "/config.json"
 
 local SavedState = { controls = {} }
@@ -114,9 +102,6 @@ end
 
 end
 
--- ============================================================
--- УТИЛИТЫ
--- ============================================================
 local function corner(radius, parent)
 local c = Instance.new("UICorner")
 c.CornerRadius = UDim.new(0, radius)
@@ -191,9 +176,6 @@ return b
 
 end
 
--- ============================================================
--- ИКОНКИ
--- ============================================================
 local ICONS = {
 custom = {}
 }
@@ -500,7 +482,6 @@ elseif kind == "logo" then
         glow.Parent = petal
     end
 
-    -- сердцевина
     corner(size, newFrame({
         Size = UDim2.fromOffset(size * 0.24, size * 0.24),
         Position = UDim2.fromScale(0.5, 0.5),
@@ -568,9 +549,6 @@ corner(size, newFrame({
 return holder
 end
 
--- ============================================================
--- SHIMMER
--- ============================================================
 local shimmers = {}
 
 local function attachShimmer(guiObject, colorA, colorB, period)
@@ -600,9 +578,6 @@ s.grad.Rotation =
 end
 end)
 
--- ============================================================
--- ТУМБЛЕР
--- ============================================================
 local function createToggle(parent, default, onChanged)
 local state = default or false
 
@@ -653,9 +628,6 @@ return track
 
 end
 
--- ============================================================
--- КАРТОЧКИ
--- ============================================================
 local function createCard(parent, title, desc, key, opts)
 opts = opts or {}
 
@@ -735,13 +707,7 @@ end
 local function createFunctionCard(parent, title, desc, tabName, key, handlers)
 return createCard(parent, title, desc, key, {
 onToggle = function(state)
-print((
-"[Sakura] %s -> %s: %s"
-):format(
-tabName,
-title,
-tostring(state)
-))
+
 
 if handlers and handlers.onToggle then  
             handlers.onToggle(state)  
@@ -751,9 +717,6 @@ if handlers and handlers.onToggle then
 
 end
 
--- ============================================================
--- ACTION CARD (плашка-кнопка со стрелочкой, без тумблера)
--- ============================================================
 local function createActionCard(parent, title, desc, onClick)
 local card = newFrame({
 Name = "ActionCard",
@@ -789,9 +752,6 @@ return card
 
 end
 
--- ============================================================
--- SLIDER
--- ============================================================
 local function createSliderCard(parent, title, desc, key, handlers)
 handlers = handlers or {}
 
@@ -928,12 +888,7 @@ return createCard(parent, title, desc, key, {
 
                 saveField(key, "value", value)  
 
-                print(  
-                    ("[Sakura] %s = %d"):format(  
-                        title,  
-                        value  
-                    )  
-                )  
+                  
             end  
         end)  
     end,  
@@ -941,9 +896,6 @@ return createCard(parent, title, desc, key, {
 
 end
 
--- ============================================================
--- INPUT
--- ============================================================
 local EVENT_MUSIC = {
     { name = "Disco", source = "Disco" },
     { name = "TM Opera O", source = "TM Opera O" },
@@ -984,7 +936,7 @@ local activeEventMusicCleanup
 local function playEventMusic(track)
     local source = findEventMusic(track)
     if not source then
-        print("[FuckCM] Event music is not loaded: " .. track.name)
+        
         return false
     end
 
@@ -992,7 +944,7 @@ local function playEventMusic(track)
         return require(game:GetService("ReplicatedStorage").Modules.ControllerLoader.MusicController)
     end)
     if not okController then
-        print("[FuckCM] MusicController is unavailable")
+        
         return false
     end
 
@@ -1034,7 +986,7 @@ local function playEventMusic(track)
 
     activeEventMusic = sound
     activeEventMusicCleanup = cleanup
-    print("[FuckCM] Music: " .. track.name)
+    
     return true
 end
 
@@ -1144,9 +1096,6 @@ local function createMusicCard(parent, title, desc, key)
     return card
 end
 
--- ============================================================
--- AMOUNT INPUT (число + разовое применение по уходу фокуса, без тумблера)
--- ============================================================
 local function createAmountCard(parent, title, desc, key, onApply)
 local saved = SavedState.controls[key] or {}
 
@@ -1199,9 +1148,6 @@ return card
 
 end
 
--- ============================================================
--- STEPPER
--- ============================================================
 local function createPercentRow(parent, title, options, default, onSelect)
 local row = newFrame({
 Name = "StepperRow",
@@ -1294,8 +1240,6 @@ return row
 
 end
 
--- то же самое, но без знака "%" и с произвольным набором значений —
--- для выбора количества (сумма апгрейда и т.п.)
 local function createNumberStepper(parent, title, options, default, onSelect)
 local row = newFrame({
 Name = "NumberStepperRow",
@@ -1374,10 +1318,7 @@ return row
 
 end
 
--- ============================================================
--- SPEED
--- ============================================================
-local SPEED_SCALE = 4 -- слайдер 1-100 даёт WalkSpeed до 400 вместо 100
+local SPEED_SCALE = 4 
 
 local Speed = {
 enabled = false,
@@ -1458,13 +1399,7 @@ end,
 onToggle = function(state)  
     local hum = getHumanoid()  
 
-    print((  
-        "[Sakura] Speed %s | humanoid: %s | WalkSpeed: %s"  
-    ):format(  
-        tostring(state),  
-        tostring(hum ~= nil),  
-        hum and tostring(hum.WalkSpeed) or "-"  
-    ))  
+      
 
     if state then  
         if hum then  
@@ -1483,10 +1418,7 @@ end,
 
 }
 
--- ============================================================
--- JUMP (слайдер 1-100, как Speed)
--- ============================================================
-local JUMP_SCALE = 2 -- слайдер 1-100 даёт JumpPower до 200
+local JUMP_SCALE = 2 
 
 local Jump = {
     enabled = false,
@@ -1525,9 +1457,6 @@ local JumpHandlers = {
     end,
 }
 
--- ============================================================
--- FLY
--- ============================================================
 local FLY_SPEED = 80
 local Fly = { enabled = false }
 local flyVelocity
@@ -1560,7 +1489,7 @@ local function startFly()
             :WaitForChild("ControlModule"))
     end)
     if not ok or type(controlModule.GetMoveVector) ~= "function" then
-        warn("[FuckCM] Fly: PlayerModule ControlModule unavailable")
+        
         return false
     end
 
@@ -1628,9 +1557,6 @@ local FlyHandlers = {
     end,
 }
 
--- ============================================================
--- KICK COMBO
--- ============================================================
 local function teleportToKick()
     local areas = workspace:FindFirstChild("Areas")
     local zone = areas and areas:FindFirstChild("KickReady")
@@ -1638,7 +1564,7 @@ local function teleportToKick()
     local root = char and char:FindFirstChild("HumanoidRootPart")
 
     if not (zone and root) then
-        print("[Sakura] KickReady или HumanoidRootPart не найдены")
+        
         return false
     end
 
@@ -1653,10 +1579,6 @@ do
     local kickEvent
 
     local function isActive(id) return active and token == id end
-
-    local function status(message)
-        print("[FuckCM] Auto Kick: " .. message)
-    end
 
     local function waitFor(id, condition, timeout)
         local started = os.clock()
@@ -1721,18 +1643,16 @@ do
     local function startKick(id, kickGui)
         local event = getKickEvent()
         if not event then
-            status("rev_KickEvent not found")
             return false
         end
         if not isActive(id) or not ready() then return busy() or kickGui.Enabled end
 
-        local ok, err = pcall(function()
+        local ok = pcall(function()
             event:FireServer(1)
         end)
         local started = waitFor(id, function()
             return busy() or kickGui.Enabled
         end, 1.5)
-        if not ok then status(tostring(err)) end
         return started
     end
 
@@ -1748,7 +1668,6 @@ do
                 local released = sawAnchor and not root.Anchored and cameraFree()
                 local timedOut = os.clock() - startedAt > 45
                 if not returnedToZone and (released or timedOut) then
-                    status(released and "cycle complete, returning to station" or "cycle timeout, returning to station")
                     task.wait(0.4)
                     teleportToKick()
                     returnedToZone = true
@@ -1761,7 +1680,6 @@ do
     local function loop(id)
         local kickGui = PlayerGui:WaitForChild("KickMinigame")
         if not getKickEvent() then
-            status("rev_KickEvent not found")
             return
         end
 
@@ -1769,12 +1687,10 @@ do
             if busy() then
                 waitKickCycle(id)
             elseif not nearKickZone() then
-                status("teleporting to kick station")
                 teleportToKick()
                 waitFor(id, ready, 3)
             elseif ready() then
                 if not startKick(id, kickGui) then
-                    status("kick did not start")
                     waitFor(id, function() return false end, 1)
                 else
                     waitKickCycle(id)
@@ -1991,8 +1907,6 @@ local BASE_POSITIONS = {
     ["Plot7"] = Vector3.new(788.794, 3.200, 403.950),
 }
 
--- имя своего плота ("Plot1".."Plot7") через официальный клиентский сервис
--- игры, а не через угадывание атрибутов — так надёжнее
 local function getOwnPlotName()
     local ok, service = pcall(function()
         return require(
@@ -2030,9 +1944,6 @@ local function findFirst(root, ...)
     return current
 end
 
--- ============================================================
--- ФЕРМА: DAILY QUEST / AUTO COLLECT / AUTO UPGRADE
--- ============================================================
 local Network
 
 local function getNetwork()
@@ -2059,7 +1970,7 @@ local function makeLoopToggle(label, action, interval)
                 while active and token == id do
                     local ok, err = pcall(action)
                     if not ok then
-                        print("[Sakura] " .. label .. " error: " .. tostring(err))
+                        
                     end
                     task.wait(interval)
                 end
@@ -2071,17 +1982,37 @@ end
 local dailyQuestPacket
 local dailyQuestListenerAttached = false
 
-local function getAvailableKicksQuest()
-    local quests = dailyQuestPacket and dailyQuestPacket.Quests
-    if type(quests) ~= "table" then return nil end
-    for _, quest in pairs(quests) do
-        local id = tostring(quest.Id or quest.Key or "")
-        local current = tonumber(quest.Current) or 0
-        local target = tonumber(quest.Target) or math.huge
-        if string.lower(id) == "kicks" and current >= target and not quest.Claimed then
-            return quest.Id or quest.Key
-        end
+local function getQuestLists(packet)
+    local lists = {}
+    if type(packet) ~= "table" then return lists end
+    if type(packet.Quests) == "table" then
+        table.insert(lists, packet.Quests)
     end
+    if type(packet.Weekly) == "table" and type(packet.Weekly.Quests) == "table" then
+        table.insert(lists, packet.Weekly.Quests)
+    end
+    return lists
+end
+
+local function equipWeightForLiftQuest()
+    local lp = Players.LocalPlayer
+    local ok, weightService = pcall(function()
+        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.WeightServiceClient)
+    end)
+    if not ok or type(weightService.Equipped) ~= "string" then return false end
+
+    local character = lp.Character
+    local tool = character and character:FindFirstChild(weightService.Equipped)
+    if tool and tool:IsA("Tool") then return true end
+
+    local backpack = lp:FindFirstChild("Backpack")
+    tool = backpack and backpack:FindFirstChild(weightService.Equipped)
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if tool and tool:IsA("Tool") and humanoid then
+        humanoid:EquipTool(tool)
+        return true
+    end
+    return false
 end
 
 local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
@@ -2093,17 +2024,39 @@ local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
             dailyQuestPacket = packet
         end)
     end
+
     net:WaitForChild("rev_DailyQuests_Request", 5):FireServer()
     local started = os.clock()
-    while os.clock() - started < 2 do
-        if getAvailableKicksQuest() then break end
+    while not dailyQuestPacket and os.clock() - started < 3 do
         task.wait(0.1)
     end
-    local questId = getAvailableKicksQuest()
-    if questId then
-        net:WaitForChild("rev_DailyQuests_Claim", 5):FireServer(questId)
+
+    local netClaim = net:WaitForChild("rev_DailyQuests_Claim", 5)
+    for _, quests in ipairs(getQuestLists(dailyQuestPacket)) do
+        for _, quest in pairs(quests) do
+            local questId = quest.Id or quest.Key
+            local current = tonumber(quest.Current) or 0
+            local target = tonumber(quest.Target) or math.huge
+            local questName = string.lower(tostring(questId or "") .. " " .. tostring(quest.Title or ""))
+
+            if not quest.Claimed and current < target
+                and (string.find(questName, "lift", 1, true)
+                    or string.find(questName, "weight", 1, true)) then
+                equipWeightForLiftQuest()
+            end
+
+            if questId and not quest.Claimed and current >= target then
+                local ok, err = pcall(function()
+                    netClaim:FireServer(questId)
+                end)
+                if not ok then
+                    
+                end
+                task.wait(0.15)
+            end
+        end
     end
-end, 15)
+end, 8)
 
 local function teleportToOwnPlot()
     local plot = getOwnPlotModel()
@@ -2159,7 +2112,7 @@ end
 local function forEachOccupiedSlot(label, callback)
     local slots = getOccupiedPlotSlots()
     if #slots == 0 then
-        print("[Sakura] " .. label .. ": занятые слоты не найдены")
+        
         return
     end
     for _, slot in ipairs(slots) do
@@ -2184,12 +2137,9 @@ local AutoCollectHandlers = makeLoopToggle("Auto Collect Cash", function()
     end)
 end, 3)
 
--- значение для "Select Speed Upgrade Amount" в Player (разовый апгрейд)
 local savedAmounts = SavedState.controls["upgrade_amounts"] or {}
 local SpeedUpgradeAmount = { value = savedAmounts.speed or 1 }
 
--- деньги игрока (leaderstats.Cash) — нужно, чтобы понимать, когда апгрейды
--- перестали быть по карману
 local function getMaxAffordableSpeedUpgrades()
     local okBalance, balanceService = pcall(function()
         return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.ClientBalanceService)
@@ -2216,7 +2166,6 @@ local function getMaxAffordableSpeedUpgrades()
     return count
 end
 
--- Visits slots 1-30 in order and upgrades each occupied slot once.
 local function runUmaUpgradePass()
     local net = getNetwork()
     if not net then return end
@@ -2242,7 +2191,6 @@ local function runUmaUpgradePass()
     end
 end
 
--- по очереди прокачивает каждую доступную Uma (слоты 1-30, пропуская пустые)
 local AutoUpgradeState = { enabled = false }
 local AutoSpeedState = { enabled = false }
 local AutoUpgradeHandlers
@@ -2261,7 +2209,7 @@ do
                     if not AutoSpeedState.enabled then
                         local ok, err = pcall(runUmaUpgradePass)
                         if not ok then
-                            print("[Sakura] Auto Upgrade Umas error: " .. tostring(err))
+                            
                         end
                     end
                     task.wait(3)
@@ -2271,8 +2219,6 @@ do
     }
 end
 
--- спускает все деньги на апгрейд скорости; если включён Auto Upgrade Umas,
--- перед этим один раз прокачивает каждую доступную Uma
 local SpeedUpgradeHandlers
 do
     local active, token = false, 0
@@ -2341,7 +2287,7 @@ local function teleportToWeightShop()
     local root = Players.LocalPlayer.Character
         and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not (touchPart and root) then
-        print("[FuckCM] WeightShop.TouchPart not found")
+        
         return false
     end
 
@@ -2397,20 +2343,73 @@ do
     }
 end
 
-local AutoBuyWeightHandlers = makeLoopToggle("Auto Buy Silver Weight", function()
-    local ok, weightService = pcall(function()
-        return require(game:GetService("ReplicatedStorage").Modules.ServicesLoader.WeightServiceClient)
-    end)
-    if ok and type(weightService.Owned) == "table"
-        and table.find(weightService.Owned, "Silver Weight") then
-        return
-    end
+local AUTO_WEIGHT_ORDER = {
+    "Regular Weight",
+    "Medium Weight",
+    "Heavy Weight",
+    "Silver Weight",
+    "Gold Weight",
+    "Diamond Weight",
+    "Hishi Akebono Weight",
+    "Special Week",
+    "Radioactive Weight",
+    "Oguri Cap",
+}
 
-    if not teleportToWeightShop() then return end
-    local net = getNetwork()
-    if not net then return end
-    net:WaitForChild("rev_Shop_Buy", 5):FireServer("WeightShop", "Silver Weight")
-end, 8)
+local AutoBuyWeightHandlers
+do
+    local pendingName
+    local pendingAt = 0
+    AutoBuyWeightHandlers = makeLoopToggle("Auto Buy Best Weight", function()
+        local replicatedStorage = game:GetService("ReplicatedStorage")
+        local okWeights, weightData = pcall(function()
+            return require(replicatedStorage.Shared.Data.WeightsData)
+        end)
+        local okWeightService, weightService = pcall(function()
+            return require(replicatedStorage.Modules.ServicesLoader.WeightServiceClient)
+        end)
+        local okBalance, balanceService = pcall(function()
+            return require(replicatedStorage.Modules.ServicesLoader.ClientBalanceService)
+        end)
+        if not (okWeights and okWeightService and okBalance)
+            or type(weightService.Owned) ~= "table" then
+            return
+        end
+
+        if pendingName and table.find(weightService.Owned, pendingName) then
+            pendingName = nil
+        elseif pendingName and os.clock() - pendingAt < 20 then
+            return
+        else
+            pendingName = nil
+        end
+
+        local bestOwnedPPS = 0
+        for _, name in ipairs(AUTO_WEIGHT_ORDER) do
+            if table.find(weightService.Owned, name) then
+                local data = weightData.Weights[name]
+                bestOwnedPPS = math.max(bestOwnedPPS, data and data.PPS or 0)
+            end
+        end
+
+        local candidate
+        for _, name in ipairs(AUTO_WEIGHT_ORDER) do
+            local data = weightData.Weights[name]
+            if data and not table.find(weightService.Owned, name)
+                and data.PPS > bestOwnedPPS
+                and not (data.Cost > balanceService.Balance) then
+                candidate = name
+            end
+        end
+        if not candidate or not teleportToWeightShop() then return end
+
+        local net = getNetwork()
+        if not net then return end
+        net:WaitForChild("rev_Shop_Buy", 5):FireServer("WeightShop", candidate)
+        pendingName = candidate
+        pendingAt = os.clock()
+    end, 8)
+end
 
 local AutoRebirthHandlers
 do
@@ -2464,22 +2463,19 @@ local AutoPlotUpgradeHandlers = makeLoopToggle("Auto Plot Upgrade", function()
     net:WaitForChild("rev_bs_upgrade", 5):FireServer()
 end, 2)
 
--- продаёт всех Umas одним вызовом; телепортируется к NPC SellUma,
--- т.к. сервер может проверять близость к точке продажи
 local SellAllHandlers = makeLoopToggle("Sell All Umas", function()
     local net = getNetwork()
     if not net then return end
     net:WaitForChild("ref_B_SellAll"):InvokeServer()
 end, 5)
 
--- продаёт Uma, которую держит игрок
 local function sellHeldUma()
     local net = getNetwork()
     if not net then return end
     local char = Players.LocalPlayer.Character
     local tool = char and char:FindFirstChildOfClass("Tool")
     if not isUmaTool(tool) then
-        print("[Sakura] Sell Uma: Uma не экипирована")
+        
         return
     end
 
@@ -2487,14 +2483,10 @@ local function sellHeldUma()
         net:WaitForChild("ref_B_Sell", 5):InvokeServer()
     end)
     if not ok then
-        print("[Sakura] Sell Uma: " .. tostring(err))
+        
     end
 end
 
--- ============================================================
--- ТЕЛЕПОРТЫ (для вкладки Teleport)
--- ============================================================
--- ищет инстанс по цепочке имён-кандидатов (первый найденный вариант)
 local function teleportRootTo(part, yOffset)
     local char = Players.LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -2510,7 +2502,7 @@ local function teleportToSell()
         part = part:FindFirstChildWhichIsA("BasePart")
     end
     if not teleportRootTo(part) then
-        print("[Sakura] Teleport to Sell: NPC не найден (workspace.NPCs.SellUma)")
+        
     end
 end
 
@@ -2525,14 +2517,11 @@ local function rejoinServer()
         teleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
     end)
     if not ok then
-        warn("[Sakura] Rejoin Server failed: " .. tostring(err))
+        
         pcall(teleportService.Teleport, teleportService, game.PlaceId, player)
     end
 end
 
--- ============================================================
--- FPS BOOST / ANTI-AFK
--- ============================================================
 local FpsBoostHandlers = {
     onToggle = function(state)
         local lighting = game:GetService("Lighting")
@@ -2545,7 +2534,7 @@ local FpsBoostHandlers = {
         if setfpscap then
             pcall(setfpscap, state and 240 or 60)
         end
-        print("[Sakura] FPS Boost: " .. tostring(state))
+        
     end,
 }
 
@@ -2577,13 +2566,10 @@ local function claimFreeGift()
         net:WaitForChild("rev_IndexRewards_Request", 5):FireServer()
     end)
     if not ok then
-        warn("[FuckCM] Claim Free Gift failed: " .. tostring(err))
+        
     end
 end
 
--- ============================================================
--- ТАБЫ
--- ============================================================
 local TABS = {
 {
 id = "home",
@@ -2621,7 +2607,7 @@ onApply = function(value)
             net:WaitForChild("rev_SPEED_UPGRADE", 5):FireServer(value)
         end)
         if not ok then
-            print("[Sakura] Speed Upgrade Amount error: " .. tostring(err))
+            
         end
     end
 end,
@@ -2663,7 +2649,7 @@ onClick = sellHeldUma,
             handlers = AutoTrainingHandlers
         },
         {
-            title = "Auto Buy Silver Weight",
+            title = "Auto Buy Best Weight",
             handlers = AutoBuyWeightHandlers
         },
         {
@@ -2700,7 +2686,7 @@ onClick = sellHeldUma,
             type = "action",
             onClick = function()
                 if not teleportToOwnPlot() then
-                    print("[Sakura] Teleport To Base: свой плот не найден")
+                    
                 end
             end,
         },
@@ -2710,7 +2696,7 @@ onClick = sellHeldUma,
             type = "action",
             onClick = function()
                 if not teleportToKick() then
-                    print("[Sakura] Teleport to Kick Station: зона не найдена")
+                    
                 end
             end,
         },
@@ -2733,9 +2719,6 @@ if PlayerGui:FindFirstChild("SakuraMenu") then
     PlayerGui.SakuraMenu:Destroy()
 end
 
--- ============================================================
--- SCREENGUI
--- ============================================================
 local ScreenGui = Instance.new("ScreenGui")
 
 ScreenGui.Name = "SakuraMenu"
@@ -2778,9 +2761,6 @@ CONFIG.AccentColor,
 1
 )
 
--- ============================================================
--- TOP BAR
--- ============================================================
 local TopBar = newFrame({
     Name = "TopBar",
     Size = UDim2.new(1, 0, 0, 52),
@@ -2834,9 +2814,6 @@ newFrame({
     BackgroundTransparency = 0.9,
 }, TopBar)
 
--- ============================================================
--- ПЕРЕТАСКИВАНИЕ
--- ============================================================
 do
 local dragging = false
 local dragStart
@@ -2904,9 +2881,6 @@ bind(
 
 end
 
--- ============================================================
--- BODY
--- ============================================================
 local Body = newFrame({
 Name = "Body",
 Size = UDim2.new(1, 0, 1, -52),
@@ -3052,9 +3026,6 @@ BackgroundTransparency = 1,
 
 }, Body)
 
--- ============================================================
--- TABS
--- ============================================================
 for i, tab in ipairs(TABS) do
 local tabBuilt, tabError = pcall(function()
 
@@ -3272,7 +3243,6 @@ if tab.id == "settings" then
 
 elseif tab.id == "home" then
 
-    -- ===== HOME: аватар, ник, голая статистика =====
     local header = newFrame({
         Name = "Header",
         Size = UDim2.new(1, 0, 0, 64),
@@ -3516,7 +3486,7 @@ btn.MouseButton1Click:Connect(
 end)
 
 if not tabBuilt then
-    warn("[Sakura] Failed to build tab " .. tostring(tab.id) .. ": " .. tostring(tabError))
+    
     local errorPanel = newFrame({
         Name = "TabBuildError",
         Size = UDim2.new(1, -32, 0, 88),
@@ -3540,9 +3510,6 @@ end
 
 end
 
--- ============================================================
--- СВОРАЧИВАНИЕ SIDEBAR
--- ============================================================
 local collapseBtn = newButton({
 Size =
 UDim2.new(
@@ -3667,9 +3634,6 @@ end
 
 )
 
--- ============================================================
--- FLOATING BUTTON
--- ============================================================
 local FLOAT_SIZE = 46
 
 local FloatBtn = newButton({
@@ -3837,9 +3801,6 @@ FloatBtn.MouseButton1Click:Connect(
 
 end
 
--- ============================================================
--- MINIMIZE / CLOSE
--- ============================================================
 btnMinimize.MouseButton1Click:Connect(
 function()
 
@@ -3895,9 +3856,6 @@ end
 
 )
 
--- ============================================================
--- ЗАПУСК
--- ============================================================
 MainFrame.Size =
 UDim2.fromScale(0, 0)
 
