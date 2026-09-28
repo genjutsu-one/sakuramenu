@@ -16,15 +16,13 @@ local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 local CONFIG = {
 WidthScale       = 0.8,
 HeightScale      = 0.75,
-Transparency     = 0.5,
-
 BgColor          = Color3.fromRGB(15, 15, 17),  
 CardColor        = Color3.fromRGB(24, 24, 27),  
 AccentColor      = Color3.fromRGB(255, 255, 255),  
 MutedTextColor   = Color3.fromRGB(160, 160, 165),  
 OnColor          = Color3.fromRGB(255, 255, 255),  
 OffColor         = Color3.fromRGB(55, 55, 58),  
-SakuraPink       = Color3.fromRGB(255, 158, 190),  
+SakuraPink       = Color3.fromRGB(255, 104, 156),  
 CloseColor       = Color3.fromRGB(255, 80, 80),  
 
 SidebarExpanded  = 170,  
@@ -93,12 +91,7 @@ end
 LoadConfig()
 
 do
-local t = SavedState.controls["settings_transparency"]
 local s = SavedState.controls["settings_size"]
-
-if t and t.value then  
-    CONFIG.Transparency = 1 - (t.value / 100)  
-end  
 
 if s and s.value then  
     CONFIG.WidthScale  = BASE_WIDTH_SCALE  * (s.value / 100)  
@@ -257,28 +250,15 @@ elseif kind == "farm" then
         BackgroundColor3 = W,  
     }, holder))  
 
-elseif kind == "misc" then  
-
-    corner(size, newFrame({  
-        Size = UDim2.fromOffset(size * 0.8, size * 0.36),  
-        Position = UDim2.new(0.5, 0, 0.62, 0),  
-        AnchorPoint = Vector2.new(0.5, 0.5),  
-        BackgroundColor3 = W,  
-    }, holder))  
-
-    corner(size, newFrame({  
-        Size = UDim2.fromOffset(size * 0.38, size * 0.38),  
-        Position = UDim2.new(0.34, 0, 0.42, 0),  
-        AnchorPoint = Vector2.new(0.5, 0.5),  
-        BackgroundColor3 = W,  
-    }, holder))  
-
-    corner(size, newFrame({  
-        Size = UDim2.fromOffset(size * 0.48, size * 0.48),  
-        Position = UDim2.new(0.62, 0, 0.36, 0),  
-        AnchorPoint = Vector2.new(0.5, 0.5),  
-        BackgroundColor3 = W,  
-    }, holder))  
+elseif kind == "misc" then
+    for i = 1, 3 do
+        corner(size, newFrame({
+            Size = UDim2.fromOffset(size * 0.18, size * 0.18),
+            Position = UDim2.new((i - 1) * 0.32 + 0.18, 0, 0.5, 0),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            BackgroundColor3 = W,
+        }, holder))
+    end
 
 elseif kind == "settings" then  
 
@@ -320,18 +300,18 @@ elseif kind == "settings" then
     }, holder))  
 
 elseif kind == "home" then
-    -- крыша
+    -- Material-style home silhouette
     corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.6, size * 0.15),
-        Position = UDim2.new(0.5, -size * 0.13, 0.5, -size * 0.22),
+        Size = UDim2.fromOffset(size * 0.62, size * 0.19),
+        Position = UDim2.new(0.5, -size * 0.13, 0.5, -size * 0.2),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Rotation = 45,
         BackgroundColor3 = W,
     }, holder))
 
     corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.6, size * 0.15),
-        Position = UDim2.new(0.5, size * 0.13, 0.5, -size * 0.22),
+        Size = UDim2.fromOffset(size * 0.62, size * 0.19),
+        Position = UDim2.new(0.5, size * 0.13, 0.5, -size * 0.2),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Rotation = -45,
         BackgroundColor3 = W,
@@ -339,7 +319,7 @@ elseif kind == "home" then
 
     -- корпус
     corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.54, size * 0.36),
+        Size = UDim2.fromOffset(size * 0.58, size * 0.38),
         Position = UDim2.new(0.5, 0, 1, 0),
         AnchorPoint = Vector2.new(0.5, 1),
         BackgroundColor3 = W,
@@ -347,8 +327,8 @@ elseif kind == "home" then
 
     -- дверь
     corner(2, newFrame({
-        Size = UDim2.fromOffset(size * 0.16, size * 0.22),
-        Position = UDim2.new(0.5, 0, 1, 0),
+        Size = UDim2.fromOffset(size * 0.15, size * 0.2),
+        Position = UDim2.new(0.5, 0, 1, -size * 0.02),
         AnchorPoint = Vector2.new(0.5, 1),
         BackgroundColor3 = CONFIG.BgColor,
     }, holder))
@@ -404,39 +384,39 @@ elseif kind == "collapse" then
     }, holder))  
 
 elseif kind == "logo" then
-    local petals = 6
+    local petals = 5
 
     for i = 1, petals do
         local angle = (360 / petals) * i
         local rad = math.rad(angle)
 
         local petal = corner(size, newFrame({
-            Size = UDim2.fromOffset(size * 0.3, size * 0.52),
+            Size = UDim2.fromOffset(size * 0.3, size * 0.46),
             Position = UDim2.new(
                 0.5,
-                math.sin(rad) * size * 0.2,
+                math.sin(rad) * size * 0.19,
                 0.5,
-                -math.cos(rad) * size * 0.2
+                -math.cos(rad) * size * 0.19
             ),
             AnchorPoint = Vector2.new(0.5, 0.5),
             Rotation = angle,
-            BackgroundColor3 = W,
+            BackgroundColor3 = CONFIG.SakuraPink,
         }, holder))
 
         -- мягкое свечение по краю лепестка
         local glow = Instance.new("UIStroke")
         glow.Color = CONFIG.SakuraPink
-        glow.Transparency = 0.55
-        glow.Thickness = 1
+        glow.Transparency = 0.35
+        glow.Thickness = 1.2
         glow.Parent = petal
     end
 
     -- сердцевина
     corner(size, newFrame({
-        Size = UDim2.fromOffset(size * 0.26, size * 0.26),
+        Size = UDim2.fromOffset(size * 0.24, size * 0.24),
         Position = UDim2.fromScale(0.5, 0.5),
         AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundColor3 = CONFIG.SakuraPink,
+        BackgroundColor3 = Color3.fromRGB(255, 235, 183),
         ZIndex = 2,
     }, holder))
 
@@ -869,8 +849,7 @@ end
 -- ============================================================
 -- INPUT
 -- ============================================================
--- общая логика применения музыки (id -> rbxassetid://, замена всех
--- играющих звуков), используется и Set Music, и Find Music
+-- Applies an asset ID to the currently playing music sounds.
 local function applyMusicId(rawId)
 local id = tostring(rawId):match("rbxassetid://(%d+)") or tostring(rawId):match("(%d+)")
 if not id then
@@ -902,12 +881,23 @@ print(("[Sakura] Set Music: %s (заменено звуков: %d)"):format(id, 
 return id, applied
 end
 
--- ИВЕНТОВАЯ МУЗЫКА: вставь сюда ID трёх треков из архива (вместо 0)
 local EVENT_MUSIC = {
-    { name = "Event Track 1", id = "0" },
-    { name = "Event Track 2", id = "0" },
-    { name = "Event Track 3", id = "0" },
+    { name = "Disco", source = "Disco" },
+    { name = "Stadium", source = "Stadium" },
+    { name = "Training Phase 1", source = "TrainingTime", sound = "Phase1" },
 }
+
+local function findEventMusic(track)
+    local soundService = game:GetService("SoundService")
+    local source = soundService:FindFirstChild(track.source)
+    local sound = source and (source:IsA("Sound") and source or source:FindFirstChildWhichIsA("Sound", true))
+    if sound then return sound end
+
+    local replicatedStorage = game:GetService("ReplicatedStorage")
+    local event = replicatedStorage:FindFirstChild(track.source, true)
+    local candidate = event and event:FindFirstChild(track.sound or "", true)
+    return candidate and candidate:IsA("Sound") and candidate or nil
+end
 
 local function createMusicCard(parent, title, desc, key)
 local saved = SavedState.controls[key] or {}
@@ -988,14 +978,15 @@ for i, track in ipairs(EVENT_MUSIC) do
         TextTruncate = Enum.TextTruncate.AtEnd,
     }, b)
     b.MouseButton1Click:Connect(function()
-        if track.id == "0" then
-            print("[Sakura] Event music: впиши ID трека в EVENT_MUSIC в коде")
+        local source = findEventMusic(track)
+        if not source or source.SoundId == "" then
+            print("[Sakura] Event music source unavailable: " .. track.name)
             return
         end
-        local id = applyMusicId(track.id)
+        local id = applyMusicId(source.SoundId)
         if id then
-            box.Text = tostring(track.id)
-            saveField(key, "text", tostring(track.id))
+            box.Text = id:match("(%d+)") or ""
+            saveField(key, "text", box.Text)
         end
     end)
 end
@@ -1481,12 +1472,6 @@ do
             or lp:GetAttribute("IsKicking") == true
     end
 
-    local function ready()
-        local hud = PlayerGui:FindFirstChild("HUD")
-        local btn = hud and hud:FindFirstChild("KickButton")
-        return btn ~= nil and btn.Visible and not busy()
-    end
-
     -- ждёт, пока цикл удара (миниигра + гача) завершится
     local function waitClear(id, timeout)
         local t0 = os.clock()
@@ -1497,7 +1482,7 @@ do
     end
 
     local function loop(id)
-        PlayerGui:WaitForChild("KickMinigame")
+        lp:WaitForChild("ClientLoader")
 
         local kickEvent = getKickEvent()
         if not kickEvent then
@@ -1505,24 +1490,20 @@ do
             return
         end
 
+        local args = { 1 }
         while isActive(id) do
             if busy() then
                 waitClear(id, 90)
-            elseif ready() then
+            else
                 local ok, err = pcall(function()
-                    kickEvent:FireServer(1)
+                    kickEvent:FireServer(table.unpack(args))
                 end)
                 if not ok then
                     print("[Sakura] Auto Kick: " .. tostring(err))
                     task.wait(1)
                 else
                     waitClear(id, 90)
-                end
-            else
-                teleportToKick()
-                local t0 = os.clock()
-                while isActive(id) and not ready() and os.clock() - t0 < 3 do
-                    RunService.Heartbeat:Wait()
+                    task.wait(1)
                 end
             end
         end
@@ -1959,8 +1940,7 @@ local function getMaxAffordableSpeedUpgrades()
     return count
 end
 
--- проход по слотам 1-30: телепорт к каждому занятому слоту + апгрейд на 1.
--- пустые слоты пропускаются, порядок всегда строго 1 -> 30
+-- Visits slots 1-30 in order and upgrades each occupied slot once.
 local function runUmaUpgradePass()
     local net = getNetwork()
     if not net then return end
@@ -1970,28 +1950,19 @@ local function runUmaUpgradePass()
     if not (slotsFolder and buttons) then return end
     local ev = net:WaitForChild("rev_B_Upgrade", 5)
 
-    local byIndex = {}
-    for _, slot in ipairs(slotsFolder:GetChildren()) do
-        local index = tonumber(string.match(slot.Name, "%d+"))
-        if index then byIndex[index] = slot end
-    end
-
     local lp = Players.LocalPlayer
     for i = 1, 30 do
-        local slot = byIndex[i]
-        if slot and slot:FindFirstChildOfClass("Part") then
-            local target = buttons:FindFirstChild("Slot" .. i)
-            if not (target and target:IsA("BasePart")) and slot:IsA("BasePart") then
-                target = slot
-            end
-            local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-            if root and target and target:IsA("BasePart") then
-                root.CFrame = target.CFrame + Vector3.new(0, 3, 0)
-                task.wait(0.1)
-            end
-            ev:FireServer(i)
-            task.wait(0.15)
+        local slot = slotsFolder:FindFirstChild("Slot" .. i)
+        local target = buttons:FindFirstChild("Slot" .. i) or slot
+        local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+        if root and target and target:IsA("BasePart") then
+            root.CFrame = target.CFrame + Vector3.new(0, 3, 0)
+            task.wait(0.1)
         end
+        if slot and slot:FindFirstChildOfClass("Part") then
+            ev:FireServer(i)
+        end
+        task.wait(0.1)
     end
 end
 
@@ -2131,22 +2102,7 @@ end
 local SellAllHandlers = makeLoopToggle("Sell All Umas", function()
     local net = getNetwork()
     if not net then return end
-    local part = findFirst(workspace, "NPCs", "SellUma", "ProximityPart")
-        or findFirst(workspace, "NPCs", "SellUma")
-    if not part then
-        print("[Sakura] Sell All Umas: workspace.NPCs.SellUma не найден")
-        return
-    end
-    if not part:IsA("BasePart") then
-        part = part:FindFirstChildWhichIsA("BasePart")
-    end
-    local root = Players.LocalPlayer.Character
-        and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if root and part then
-        root.CFrame = part.CFrame + Vector3.new(0, 3, 0)
-        task.wait(0.3)
-    end
-    net:WaitForChild("ref_B_SellAll", 5):InvokeServer()
+    net:WaitForChild("ref_B_SellAll"):InvokeServer()
 end, 5)
 
 -- продаёт Uma, которую держит игрок
@@ -2192,28 +2148,49 @@ local function teleportToSell()
 end
 
 local function teleportToShop()
-    local part = findFirst(workspace, "NPCs", "Shop Guy")
-        or findFirst(workspace, "NPCs", "ShopGuy")
-        or findFirst(workspace, "NPCs", "Shop")
-    if not part then
-        -- не нашли по точным именам — ищем любого NPC с "shop" в названии
-        local npcs = workspace:FindFirstChild("NPCs")
-        if npcs then
-            for _, child in ipairs(npcs:GetChildren()) do
-                if string.find(string.lower(child.Name), "shop", 1, true) then
-                    part = child
-                    break
-                end
+    local npcs = workspace:FindFirstChild("NPCs")
+    local shop = npcs and (npcs:FindFirstChild("Shop Guy") or npcs:FindFirstChild("ShopGuy") or npcs:FindFirstChild("Shop"))
+    local target
+    if shop then
+        if shop:IsA("BasePart") then
+            target = shop
+        else
+            local hitbox = shop:FindFirstChild("Hitbox", true)
+            if hitbox and hitbox:IsA("BasePart") then
+                target = hitbox
             end
+            if not target and shop:IsA("Model") then
+                target = shop.PrimaryPart
+            end
+            target = target or shop:FindFirstChildWhichIsA("BasePart", true)
         end
     end
-    if part and not part:IsA("BasePart") then
-        part = part:FindFirstChild("ProximityPart")
-            or part.PrimaryPart
-            or part:FindFirstChildWhichIsA("BasePart")
+    local char = Players.LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if target and target:IsA("BasePart") and root then
+        local position = target.Position - target.CFrame.LookVector * 4 + Vector3.new(0, 1, 0)
+        root.CFrame = CFrame.lookAt(position, target.Position)
     end
-    if not teleportRootTo(part) then
-        print("[Sakura] Teleport to Shop: NPC не найден — пришли точный путь из Explorer")
+
+    task.wait(0.35)
+    local frames = PlayerGui:FindFirstChild("Frames")
+    local store = frames and frames:FindFirstChild("Store")
+    if store then
+        store.Visible = true
+    else
+        print("[Sakura] Teleport to Shop: shop UI not found")
+    end
+end
+
+local function rejoinServer()
+    local teleportService = game:GetService("TeleportService")
+    local player = Players.LocalPlayer
+    local ok, err = pcall(function()
+        teleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+    end)
+    if not ok then
+        warn("[Sakura] Rejoin Server failed: " .. tostring(err))
+        pcall(teleportService.Teleport, teleportService, game.PlaceId, player)
     end
 end
 
@@ -2351,6 +2328,7 @@ onClick = sellHeldUma,
         { title = "Set Music", type = "music" },
         { title = "FPS Boost", handlers = FpsBoostHandlers },
         { title = "Anti-AFK", handlers = AntiAfkHandlers },
+        { title = "Rejoin Server", type = "action", onClick = rejoinServer },
     },
 },
 {
@@ -2425,8 +2403,7 @@ Size =
 BackgroundColor3 =  
     CONFIG.BgColor,  
 
-BackgroundTransparency =  
-    CONFIG.Transparency,  
+BackgroundTransparency = 0,  
 
 ClipsDescendants = true,
 
@@ -2460,11 +2437,11 @@ local logoHolder = newFrame({
 local logoIcon = drawIcon("logo", logoHolder, 26)
 for _, part in ipairs(logoIcon:GetChildren()) do
     if part:IsA("Frame") then
-        attachShimmer(part, Color3.fromRGB(255, 158, 190), Color3.fromRGB(255, 255, 255), 3.0)
+        attachShimmer(part, Color3.fromRGB(255, 78, 139), Color3.fromRGB(255, 232, 241), 2.4)
     end
 end
 bind(RunService.RenderStepped, function(dt)
-    logoIcon.Rotation = (logoIcon.Rotation + dt * 8) % 360
+    logoIcon.Rotation = (logoIcon.Rotation + dt * 3.2) % 360
 end)
 
 local titleLabel = newLabel({
@@ -2476,7 +2453,7 @@ local titleLabel = newLabel({
     TextSize = 18,
     TextColor3 = CONFIG.SakuraPink,
 }, TopBar)
-attachShimmer(titleLabel, Color3.fromRGB(255, 105, 165), Color3.fromRGB(255, 208, 224), 3.2)
+attachShimmer(titleLabel, Color3.fromRGB(255, 78, 139), Color3.fromRGB(255, 224, 235), 4.2)
 
 local btnClose = newButton({
     Name = "CloseBtn",
@@ -2885,39 +2862,10 @@ newLabel({
 }, page)  
 
 if tab.id == "settings" then  
-
-    local sT =  
-        SavedState.controls[  
-            "settings_transparency"  
-        ]  
-
     local sS =  
         SavedState.controls[  
             "settings_size"  
         ]  
-
-    createPercentRow(  
-        page,  
-        "Transparency",  
-        {50, 60, 70, 80, 90, 100},  
-        (sT and sT.value) or 50,  
-        function(val)  
-
-            CONFIG.Transparency =  
-                1 - (val / 100)  
-
-            MainFrame.BackgroundTransparency =
-                CONFIG.Transparency
-
-            SavedState.controls[  
-                "settings_transparency"  
-            ] = {  
-                value = val  
-            }  
-
-            SaveConfig()  
-        end  
-    ).LayoutOrder = 1  
 
     createPercentRow(  
         page,  
@@ -2954,7 +2902,7 @@ if tab.id == "settings" then
 
             SaveConfig()  
         end  
-    ).LayoutOrder = 2  
+    ).LayoutOrder = 1  
 
 elseif tab.id == "home" then
 
@@ -3485,8 +3433,7 @@ FloatBtn.MouseButton1Click:Connect(
                         CONFIG.HeightScale  
                     ),  
 
-                BackgroundTransparency =
-                    CONFIG.Transparency,  
+                BackgroundTransparency = 0,  
             },  
             Enum.EasingStyle.Back  
         )  
@@ -3569,8 +3516,7 @@ CONFIG.WidthScale,
 CONFIG.HeightScale
 ),
 
-BackgroundTransparency =
-        CONFIG.Transparency,  
+BackgroundTransparency = 0,  
 },  
 Enum.EasingStyle.Back
 
