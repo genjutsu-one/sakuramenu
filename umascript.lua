@@ -2895,7 +2895,7 @@ ScreenGui.Name = "FuckCMMenu"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior =
-Enum.ZIndexBehavior.Sibling
+Enum.ZIndexBehavior.Global
 ScreenGui.Parent = PlayerGui
 
 local MainFrame = newFrame({
@@ -2970,9 +2970,13 @@ local btnClose = newButton({
     Position = UDim2.new(1, -16, 0.5, 0),
     AnchorPoint = Vector2.new(1, 0.5),
     BackgroundColor3 = CONFIG.CardColor,
+    ZIndex = 80,
 }, TopBar)
 corner(8, btnClose)
 drawCross(btnClose, 12, CONFIG.CloseColor, 45, -45)
+for _, iconPart in ipairs(btnClose:GetDescendants()) do
+    if iconPart:IsA("GuiObject") then iconPart.ZIndex = 81 end
+end
 
 local btnMinimize = newButton({
     Name = "MinimizeBtn",
@@ -2980,9 +2984,13 @@ local btnMinimize = newButton({
     Position = UDim2.new(1, -54, 0.5, 0),
     AnchorPoint = Vector2.new(1, 0.5),
     BackgroundColor3 = CONFIG.CardColor,
+    ZIndex = 80,
 }, TopBar)
 corner(8, btnMinimize)
 drawCross(btnMinimize, 12, CONFIG.AccentColor, 0, nil)
+for _, iconPart in ipairs(btnMinimize:GetDescendants()) do
+    if iconPart:IsA("GuiObject") then iconPart.ZIndex = 81 end
+end
 
 newFrame({
     Size = UDim2.new(1, 0, 0, 1),
@@ -3835,6 +3843,7 @@ end)
 local farmRarityOrder = {}
 local farmRarityThreshold = {}
 local farmPoolNames = {}
+local farmAvailabilityByRarity = {}
 if farmRarityData then
     for _, entry in ipairs(farmRarityData.DistanceThresholds or {}) do
         table.insert(farmRarityOrder, entry.Rarity)
@@ -3890,7 +3899,10 @@ local function isFarmUmaAvailable(name, data)
         and farmPoolNames[data.Rarity][name]) then
         return false
     end
-    return getFarmPowerLevel(data.Rarity) ~= nil
+    if farmAvailabilityByRarity[data.Rarity] == nil then
+        farmAvailabilityByRarity[data.Rarity] = getFarmPowerLevel(data.Rarity) ~= nil
+    end
+    return farmAvailabilityByRarity[data.Rarity]
 end
 
 if farmEntities and farmEntities.Brainrots then
@@ -3966,15 +3978,19 @@ end
 local minimizeFarm = newButton({
     Text = "−", Position = UDim2.new(1, -66, 0, 7), Size = UDim2.fromOffset(26, 26),
     BackgroundColor3 = CONFIG.CardColor, TextColor3 = CONFIG.TextColor,
-    Font = Enum.Font.GothamBold, TextSize = 18, ZIndex = 24,
+    Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = Color3.new(1, 1, 1),
+    BackgroundTransparency = 0.08, ZIndex = 60,
 }, autoFarmPanel)
 corner(14, minimizeFarm)
+minimizeFarm.Text = "-"
 local closeFarm = newButton({
     Text = "×", Position = UDim2.new(1, -34, 0, 7), Size = UDim2.fromOffset(26, 26),
     BackgroundColor3 = CONFIG.CardColor, TextColor3 = CONFIG.TextColor,
-    Font = Enum.Font.GothamBold, TextSize = 18, ZIndex = 24,
+    Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = Color3.new(1, 1, 1),
+    BackgroundTransparency = 0.08, ZIndex = 60,
 }, autoFarmPanel)
 corner(14, closeFarm)
+closeFarm.Text = "X"
 minimizeFarm.Activated:Connect(collapseFarmPanel)
 closeFarm.Activated:Connect(collapseFarmPanel)
 makeFarmDraggable(autoFarmPanel, autoFarmPanel:FindFirstChild("Auto Farm Umas", true) or autoFarmPanel:FindFirstChildOfClass("TextLabel"))
@@ -4016,6 +4032,7 @@ local function makeFarmChip(parent, text, position, size)
         Font = Enum.Font.GothamBold, TextSize = 11, ZIndex = 23,
     }, button)
     textLabel.Active = false
+    stroke(textLabel, Color3.new(0, 0, 0), 0.7, 1)
     if rarityStyle and rarityStyle.transform_func then
         pcall(rarityStyle.transform_func, textLabel)
     elseif farmMutationData and farmMutationData.LabelFunctions
@@ -4272,6 +4289,7 @@ local function addFarmCard(name, data, order)
         visualCard.AnchorPoint = Vector2.new(0.5, 0.5)
         visualCard.Position = UDim2.fromScale(0.5, 0.5)
         visualCard.Size = UDim2.fromOffset(146, 160)
+        visualCard.ZIndex = 22
         visualCard.Parent = card
         local cardScale = Instance.new("UIScale")
         cardScale.Scale = 0.6
@@ -4279,6 +4297,9 @@ local function addFarmCard(name, data, order)
         local icon = visualCard:FindFirstChild("Icon", true)
         local nameLabel = visualCard:FindFirstChild("NameLabel", true)
         local cps = visualCard:FindFirstChild("CPSLabel", true)
+        for _, descendant in ipairs(visualCard:GetDescendants()) do
+            if descendant:IsA("GuiObject") then descendant.ZIndex = 23 end
+        end
         if icon and icon:IsA("ImageLabel") then
             icon.Image = data.Image or ""
             icon.ImageColor3 = Color3.new(1, 1, 1)
@@ -4621,7 +4642,7 @@ BackgroundTransparency = 0,
 
 Visible = false,  
 
-ZIndex = 2,
+ZIndex = 80,
 
 }, ScreenGui)
 
@@ -4736,6 +4757,7 @@ FloatBtn.MouseButton1Click:Connect(
 
         FloatBtn.Visible = false  
         MainFrame.Visible = true  
+        if autoFarmPanel then autoFarmPanel.Visible = autoFarmEnabled end
 
         MainFrame.Size =  
             UDim2.fromScale(0, 0)  
@@ -4785,7 +4807,9 @@ local t =
         function()  
 
             MainFrame.Visible = false  
-            FloatBtn.Visible = true  
+            FloatBtn.Visible = true
+            if autoFarmPanel then autoFarmPanel.Visible = false end
+            if autoFarmPill then autoFarmPill.Visible = false end
         end  
     )  
 end
@@ -4795,6 +4819,7 @@ end
 btnClose.MouseButton1Click:Connect(
 function()
 
+AutoFarmHandlers.onToggle(false)
 SpeedHandlers.onToggle(false)  
     FlyHandlers.onToggle(false)
     KickHandlers.onToggle(false)
