@@ -1568,7 +1568,7 @@ local function teleportToKick()
         return false
     end
 
-    root.CFrame = zone.CFrame + Vector3.new(0, 3, 0)
+    root.CFrame = zone.CFrame + Vector3.new(0, 1.5, 0)
     return true
 end
 
@@ -1981,6 +1981,8 @@ end
 
 local dailyQuestPacket
 local dailyQuestListenerAttached = false
+local AutoTrainingHandlers
+local questFarmMode
 
 local function getQuestLists(packet)
     local lists = {}
@@ -2015,6 +2017,31 @@ local function equipWeightForLiftQuest()
     return false
 end
 
+local function getQuestFarmMode(quest)
+    local questName = string.lower(table.concat({
+        tostring(quest.Id or quest.Key or ""),
+        tostring(quest.Title or ""),
+    }, " "))
+    if string.find(questName, "kick", 1, true) then return "kick" end
+    if string.find(questName, "lift", 1, true)
+        or string.find(questName, "weight", 1, true) then
+        return "weight"
+    end
+end
+
+local function setQuestFarmMode(mode)
+    if questFarmMode == mode then return end
+    if mode ~= "kick" then KickHandlers.onToggle(false) end
+    if mode ~= "weight" and AutoTrainingHandlers then
+        AutoTrainingHandlers.onToggle(false)
+    end
+    questFarmMode = mode
+    if mode == "kick" then KickHandlers.onToggle(true) end
+    if mode == "weight" and AutoTrainingHandlers then
+        AutoTrainingHandlers.onToggle(true)
+    end
+end
+
 local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
     local net = getNetwork()
     if not net then return end
@@ -2032,20 +2059,19 @@ local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
     end
 
     local netClaim = net:WaitForChild("rev_DailyQuests_Claim", 5)
-    for _, quests in ipairs(getQuestLists(dailyQuestPacket)) do
+    local questLists = getQuestLists(dailyQuestPacket)
+    local completedFarmMode
+    for _, quests in ipairs(questLists) do
         for _, quest in pairs(quests) do
             local questId = quest.Id or quest.Key
             local current = tonumber(quest.Current) or 0
             local target = tonumber(quest.Target) or math.huge
-            local questName = string.lower(tostring(questId or "") .. " " .. tostring(quest.Title or ""))
-
-            if not quest.Claimed and current < target
-                and (string.find(questName, "lift", 1, true)
-                    or string.find(questName, "weight", 1, true)) then
-                equipWeightForLiftQuest()
-            end
+            local mode = getQuestFarmMode(quest)
 
             if questId and not quest.Claimed and current >= target then
+                if mode and mode == questFarmMode then
+                    completedFarmMode = mode
+                end
                 local ok, err = pcall(function()
                     netClaim:FireServer(questId)
                 end)
@@ -2056,6 +2082,36 @@ local DailyQuestHandlers = makeLoopToggle("Auto Collect Quest", function()
             end
         end
     end
+
+    if completedFarmMode then
+        setQuestFarmMode(nil)
+        return
+    end
+
+    for _, quests in ipairs(questLists) do
+        local kickQuest, weightQuest
+        for _, quest in pairs(quests) do
+            local current = tonumber(quest.Current) or 0
+            local target = tonumber(quest.Target) or math.huge
+            if not quest.Claimed and current < target then
+                local mode = getQuestFarmMode(quest)
+                if mode == "kick" then
+                    kickQuest = true
+                elseif mode == "weight" then
+                    weightQuest = true
+                end
+            end
+        end
+        if kickQuest then
+            setQuestFarmMode("kick")
+            return
+        elseif weightQuest then
+            setQuestFarmMode("weight")
+            equipWeightForLiftQuest()
+            return
+        end
+    end
+    setQuestFarmMode(nil)
 end, 8)
 
 local function teleportToOwnPlot()
@@ -2065,6 +2121,17 @@ local function teleportToOwnPlot()
     if not (plot and root) then return false end
     root.CFrame = plot:GetPivot() + Vector3.new(0, 4, 0)
     return true
+end
+
+local function withSavedPlayerPosition(callback)
+    local character = Players.LocalPlayer.Character
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    local originalCFrame = root and root.CFrame
+    local ok, err = pcall(callback)
+    if root and root.Parent and originalCFrame then
+        root.CFrame = originalCFrame
+    end
+    if not ok then error(err) end
 end
 
 local function getAllPlotSlotRecords()
@@ -2125,15 +2192,17 @@ local AutoCollectHandlers = makeLoopToggle("Auto Collect Cash", function()
     local net = getNetwork()
     if not net then return end
     local ev = net:WaitForChild("rev_B_Collect", 5)
-    forEachOccupiedSlot("Auto Collect Cash", function(i, uma, button)
-        if not button or not hasCashToCollect(uma) then return end
-        local char = Players.LocalPlayer.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if root then
-            root.CFrame = button.CFrame + Vector3.new(0, 3, 0)
-            task.wait(0.1)
-        end
-        ev:FireServer(i)
+    withSavedPlayerPosition(function()
+        forEachOccupiedSlot("Auto Collect Cash", function(i, uma, button)
+            if not button or not hasCashToCollect(uma) then return end
+            local char = Players.LocalPlayer.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.CFrame = button.CFrame + Vector3.new(0, 3, 0)
+                task.wait(0.1)
+            end
+            ev:FireServer(i)
+        end)
     end)
 end, 3)
 
@@ -2167,28 +2236,30 @@ local function getMaxAffordableSpeedUpgrades()
 end
 
 local function runUmaUpgradePass()
-    local net = getNetwork()
-    if not net then return end
-    local plot = getOwnPlotModel()
-    local slotsFolder = plot and plot:FindFirstChild("Slots")
-    local buttons = plot and plot:FindFirstChild("Buttons")
-    if not (slotsFolder and buttons) then return end
-    local ev = net:WaitForChild("rev_B_Upgrade", 5)
+    withSavedPlayerPosition(function()
+        local net = getNetwork()
+        if not net then return end
+        local plot = getOwnPlotModel()
+        local slotsFolder = plot and plot:FindFirstChild("Slots")
+        local buttons = plot and plot:FindFirstChild("Buttons")
+        if not (slotsFolder and buttons) then return end
+        local ev = net:WaitForChild("rev_B_Upgrade", 5)
 
-    local lp = Players.LocalPlayer
-    for i = 1, 30 do
-        local slot = slotsFolder:FindFirstChild("Slot" .. i)
-        local target = buttons:FindFirstChild("Slot" .. i) or slot
-        local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-        if root and target and target:IsA("BasePart") then
-            root.CFrame = target.CFrame + Vector3.new(0, 3, 0)
+        local lp = Players.LocalPlayer
+        for i = 1, 30 do
+            local slot = slotsFolder:FindFirstChild("Slot" .. i)
+            local target = buttons:FindFirstChild("Slot" .. i) or slot
+            local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+            if root and target and target:IsA("BasePart") then
+                root.CFrame = target.CFrame + Vector3.new(0, 3, 0)
+                task.wait(0.1)
+            end
+            if slot and slot:FindFirstChildOfClass("Part") then
+                ev:FireServer(i)
+            end
             task.wait(0.1)
         end
-        if slot and slot:FindFirstChildOfClass("Part") then
-            ev:FireServer(i)
-        end
-        task.wait(0.1)
-    end
+    end)
 end
 
 local AutoUpgradeState = { enabled = false }
@@ -2299,7 +2370,6 @@ local function teleportToWeightShop()
     return true
 end
 
-local AutoTrainingHandlers
 do
     local active, token = false, 0
     local bonusConnection
