@@ -1641,7 +1641,12 @@ do
 
     local function nearKickZone()
         local controller = getZoneController()
-        return controller ~= nil and controller.Zone == "KickReady"
+        if not controller then return false end
+        -- The normal zone handler refreshes this on PreRender; force a fresh
+        -- overlap check after teleporting so the first kick does not use a
+        -- stale zone value.
+        pcall(function() controller:UpdateZone() end)
+        return controller.Zone == "KickReady"
     end
 
     local function cameraFree()
@@ -2515,11 +2520,13 @@ do
                 candidate = name
             end
         end
-        if not candidate or not teleportToWeightShop() then return end
+        if not candidate then return end
 
         local net = getNetwork()
         if not net then return end
-        net:WaitForChild("rev_Shop_Buy", 5):FireServer("WeightShop", candidate)
+        local buyEvent = net:WaitForChild("rev_Shop_Buy", 5)
+        if not buyEvent then return end
+        buyEvent:FireServer("WeightShop", candidate)
         pendingName = candidate
         pendingAt = os.clock()
     end, 8)
