@@ -579,6 +579,25 @@ s.grad.Rotation =
 end
 end)
 
+local toggleCallbacks = setmetatable({}, { __mode = "k" })
+local autoFarmToggleTrack
+
+local function setToggleState(track, enabled, notify)
+    if not track then return end
+    local state = enabled == true
+    track:SetAttribute("ToggleState", state)
+    track.BackgroundColor3 = state and CONFIG.OnColor or CONFIG.OffColor
+    local knob = track:FindFirstChildWhichIsA("Frame")
+    if knob then
+        knob.Position = state
+            and UDim2.new(1, -21, 0.5, 0)
+            or UDim2.new(0, 3, 0.5, 0)
+    end
+    if notify and toggleCallbacks[track] then
+        toggleCallbacks[track](state)
+    end
+end
+
 local function createToggle(parent, default, onChanged)
 local state = default or false
 
@@ -589,6 +608,8 @@ local track = newFrame({
 }, parent)  
 
 corner(12, track)  
+track:SetAttribute("ToggleState", state)
+toggleCallbacks[track] = onChanged
 
 local knob = newFrame({  
     Size = UDim2.fromOffset(18, 18),  
@@ -607,22 +628,16 @@ local hit = newButton({
 }, track)  
 
 hit.MouseButton1Click:Connect(function()  
-    state = not state  
-
-    tween(track, 0.18, {  
-        BackgroundColor3 =  
-            state and CONFIG.OnColor or CONFIG.OffColor  
-    })  
-
-    tween(knob, 0.18, {  
-        Position = state  
-            and UDim2.new(1, -21, 0.5, 0)  
-            or UDim2.new(0, 3, 0.5, 0),  
-    })  
-
-    if onChanged then  
-        onChanged(state)  
-    end  
+    state = not track:GetAttribute("ToggleState")
+    tween(track, 0.18, {
+        BackgroundColor3 = state and CONFIG.OnColor or CONFIG.OffColor
+    })
+    tween(knob, 0.18, {
+        Position = state and UDim2.new(1, -21, 0.5, 0)
+            or UDim2.new(0, 3, 0.5, 0),
+    })
+    track:SetAttribute("ToggleState", state)
+    if onChanged then onChanged(state) end
 end)  
 
 return track
@@ -683,7 +698,7 @@ if opts.build then
     opts.build(panel, saved)  
 end  
 
-createToggle(toggleHolder, on, function(state)  
+local toggleTrack = createToggle(toggleHolder, on, function(state)  
     on = state  
     if expandedH then  
         tween(card, CONFIG.ExpandTime, {  
@@ -700,6 +715,10 @@ createToggle(toggleHolder, on, function(state)
         opts.onToggle(state)  
     end  
 end)  
+
+if title == "Auto Farm Umas" then
+    autoFarmToggleTrack = toggleTrack
+end
 
 return card
 
@@ -3856,6 +3875,11 @@ if farmRarityData then
         end
     end
 end
+for index = #farmRarityOrder, 1, -1 do
+    if farmRarityOrder[index] == "Exclusive" then
+        table.remove(farmRarityOrder, index)
+    end
+end
 
 local function getFarmMaxDistance()
     local ok, service = pcall(function()
@@ -3908,7 +3932,7 @@ end
 if farmEntities and farmEntities.Brainrots then
     local extraRarities = {}
     for _, data in pairs(farmEntities.Brainrots) do
-        if data.Rarity and not farmRarityThreshold[data.Rarity]
+    if data.Rarity and data.Rarity ~= "Exclusive" and not farmRarityThreshold[data.Rarity]
             and not table.find(extraRarities, data.Rarity) then
             table.insert(extraRarities, data.Rarity)
         end
@@ -3925,12 +3949,12 @@ autoFarmPanel = newFrame({
     Position = UDim2.fromScale(0.5, 0.5),
     AnchorPoint = Vector2.new(0.5, 0.5),
     BackgroundColor3 = CONFIG.BgColor,
-    BackgroundTransparency = 0.03,
+    BackgroundTransparency = CONFIG.Transparency,
     Visible = false,
     ZIndex = 20,
 }, ScreenGui)
-corner(12, autoFarmPanel)
-stroke(autoFarmPanel, CONFIG.AccentColor, 0.55, 1)
+corner(16, autoFarmPanel)
+stroke(autoFarmPanel, CONFIG.AccentColor, 0.88, 1)
 
 newLabel({
     Text = "Auto Farm Umas",
@@ -3982,7 +4006,17 @@ local minimizeFarm = newButton({
     BackgroundTransparency = 0.08, ZIndex = 60,
 }, autoFarmPanel)
 corner(14, minimizeFarm)
-minimizeFarm.Text = "-"
+minimizeFarm.Text = ""
+minimizeFarm.Position = UDim2.new(1, -54, 0, 10)
+minimizeFarm.AnchorPoint = Vector2.new(1, 0)
+minimizeFarm.Size = UDim2.fromOffset(30, 30)
+minimizeFarm.BackgroundTransparency = 0
+minimizeFarm.ZIndex = 50
+for _, child in ipairs(minimizeFarm:GetChildren()) do
+    if child:IsA("UICorner") then child:Destroy() end
+end
+corner(8, minimizeFarm)
+drawCross(minimizeFarm, 12, CONFIG.AccentColor, 0, nil)
 local closeFarm = newButton({
     Text = "×", Position = UDim2.new(1, -34, 0, 7), Size = UDim2.fromOffset(26, 26),
     BackgroundColor3 = CONFIG.CardColor, TextColor3 = CONFIG.TextColor,
@@ -3990,9 +4024,33 @@ local closeFarm = newButton({
     BackgroundTransparency = 0.08, ZIndex = 60,
 }, autoFarmPanel)
 corner(14, closeFarm)
-closeFarm.Text = "X"
+closeFarm.Text = ""
+closeFarm.Position = UDim2.new(1, -16, 0, 10)
+closeFarm.AnchorPoint = Vector2.new(1, 0)
+closeFarm.Size = UDim2.fromOffset(30, 30)
+closeFarm.BackgroundTransparency = 0
+closeFarm.ZIndex = 50
+for _, child in ipairs(closeFarm:GetChildren()) do
+    if child:IsA("UICorner") then child:Destroy() end
+end
+corner(8, closeFarm)
+drawCross(closeFarm, 12, CONFIG.CloseColor, 45, -45)
+for _, button in ipairs({ minimizeFarm, closeFarm }) do
+    for _, iconPart in ipairs(button:GetDescendants()) do
+        if iconPart:IsA("GuiObject") then iconPart.ZIndex = 51 end
+    end
+end
+local function closeFarmMenu()
+    if autoFarmToggleTrack and autoFarmToggleTrack:GetAttribute("ToggleState") then
+        setToggleState(autoFarmToggleTrack, false, true)
+    elseif autoFarmEnabled then
+        AutoFarmHandlers.onToggle(false)
+    end
+    autoFarmPanel.Visible = false
+    autoFarmPill.Visible = false
+end
 minimizeFarm.Activated:Connect(collapseFarmPanel)
-closeFarm.Activated:Connect(collapseFarmPanel)
+closeFarm.Activated:Connect(closeFarmMenu)
 makeFarmDraggable(autoFarmPanel, autoFarmPanel:FindFirstChild("Auto Farm Umas", true) or autoFarmPanel:FindFirstChildOfClass("TextLabel"))
 
 autoFarmPill = newButton({
@@ -4024,8 +4082,8 @@ local function makeFarmChip(parent, text, position, size)
         TextSize = 11,
         ZIndex = 22,
     }, parent)
-    corner(6, button)
-    stroke(button, mutationColor or CONFIG.AccentColor, 0.55, 1)
+    corner(8, button)
+    stroke(button, mutationColor or CONFIG.AccentColor, 0.88, 1)
     local textLabel = newLabel({
         Name = "ChipText", Text = text, Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1, TextColor3 = mutationColor or CONFIG.MutedTextColor,
@@ -4078,8 +4136,8 @@ newLabel({
 
 local farmCardScroll = Instance.new("ScrollingFrame")
 farmCardScroll.Name = "UmaCards"
-farmCardScroll.Position = UDim2.new(0, 12, 0, 130)
-farmCardScroll.Size = UDim2.new(0.62, -16, 1, -176)
+farmCardScroll.Position = UDim2.new(0, 24, 0, 130)
+farmCardScroll.Size = UDim2.new(0.62, -28, 1, -176)
 farmCardScroll.BackgroundTransparency = 1
 farmCardScroll.BorderSizePixel = 0
 farmCardScroll.ScrollBarThickness = 4
@@ -4088,6 +4146,10 @@ farmCardScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 farmCardScroll.CanvasSize = UDim2.new()
 farmCardScroll.ZIndex = 21
 farmCardScroll.Parent = autoFarmPanel
+local farmCardPadding = Instance.new("UIPadding")
+farmCardPadding.PaddingLeft = UDim.new(0, 10)
+farmCardPadding.PaddingTop = UDim.new(0, 4)
+farmCardPadding.Parent = farmCardScroll
 local farmGrid = Instance.new("UIGridLayout")
 farmGrid.CellSize = UDim2.fromOffset(88, 96)
 farmGrid.CellPadding = UDim2.fromOffset(6, 6)
@@ -4099,7 +4161,7 @@ local farmMutationPane = newFrame({
     Position = UDim2.new(0.64, 0, 0, 130),
     Size = UDim2.new(0.34, -12, 1, -176),
     BackgroundColor3 = CONFIG.CardColor,
-    BackgroundTransparency = 0.15,
+    BackgroundTransparency = 1,
     ZIndex = 21,
 }, autoFarmPanel)
 corner(8, farmMutationPane)
@@ -4113,17 +4175,19 @@ local currentUmaLabel = newLabel({
     Font = Enum.Font.GothamBold,
     ZIndex = 22,
 }, farmMutationPane)
-local removeTargetButton = makeFarmChip(
+local configureMutationButton = makeFarmChip(
     farmMutationPane,
-    "Remove Uma",
+    "Mutations: Choose",
     UDim2.new(0, 10, 0, 40),
     UDim2.new(1, -20, 0, 24)
 )
 local umaMutationGrid = Instance.new("ScrollingFrame")
 umaMutationGrid.Name = "MutationChoices"
 umaMutationGrid.Position = UDim2.new(0, 8, 0, 70)
-umaMutationGrid.Size = UDim2.new(1, -16, 1, -78)
-umaMutationGrid.BackgroundTransparency = 1
+umaMutationGrid.Size = UDim2.new(1, -16, 0, 150)
+umaMutationGrid.Visible = false
+umaMutationGrid.BackgroundColor3 = CONFIG.CardColor
+umaMutationGrid.BackgroundTransparency = 0.03
 umaMutationGrid.BorderSizePixel = 0
 umaMutationGrid.ScrollBarThickness = 4
 umaMutationGrid.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -4132,6 +4196,8 @@ umaMutationGrid.AutomaticCanvasSize = Enum.AutomaticSize.Y
 umaMutationGrid.CanvasSize = UDim2.new()
 umaMutationGrid.ZIndex = 22
 umaMutationGrid.Parent = farmMutationPane
+corner(8, umaMutationGrid)
+stroke(umaMutationGrid, CONFIG.AccentColor, 0.88, 1)
 local umaMutationLayout = Instance.new("UIGridLayout")
 umaMutationLayout.CellSize = UDim2.new(0.5, -5, 0, 30)
 umaMutationLayout.CellPadding = UDim2.fromOffset(5, 5)
@@ -4159,7 +4225,7 @@ local farmStartButton = newButton({
     TextSize = 13,
     ZIndex = 22,
 }, autoFarmPanel)
-corner(7, farmStartButton)
+corner(8, farmStartButton)
 
 local function buildFarmFilterRow(parent, values, stateMap, yOffset)
     local scroll = Instance.new("ScrollingFrame")
@@ -4265,9 +4331,10 @@ for index, mutation in ipairs({ "Any", "Normal", table.unpack(farmMutationData a
     table.insert(farmMutationButtons, { button = button, mutation = mutation })
 end
 
-removeTargetButton.Activated:Connect(function()
+configureMutationButton.Visible = false
+configureMutationButton.Activated:Connect(function()
     if selectedUmaName then
-        autoFarmTargets[selectedUmaName] = nil
+        umaMutationGrid.Visible = not umaMutationGrid.Visible
         if autoFarmRefresh then autoFarmRefresh() end
     end
 end)
@@ -4289,6 +4356,7 @@ local function addFarmCard(name, data, order)
         visualCard.AnchorPoint = Vector2.new(0.5, 0.5)
         visualCard.Position = UDim2.fromScale(0.5, 0.5)
         visualCard.Size = UDim2.fromOffset(146, 160)
+        visualCard.ClipsDescendants = true
         visualCard.ZIndex = 22
         visualCard.Parent = card
         local cardScale = Instance.new("UIScale")
@@ -4299,6 +4367,10 @@ local function addFarmCard(name, data, order)
         local cps = visualCard:FindFirstChild("CPSLabel", true)
         for _, descendant in ipairs(visualCard:GetDescendants()) do
             if descendant:IsA("GuiObject") then descendant.ZIndex = 23 end
+            if (descendant:IsA("ImageLabel") or descendant:IsA("ImageButton"))
+                and descendant.Name ~= "Icon" then
+                descendant.Visible = false
+            end
         end
         if icon and icon:IsA("ImageLabel") then
             icon.Image = data.Image or ""
@@ -4334,8 +4406,15 @@ local function addFarmCard(name, data, order)
     }, card)
     click.Activated:Connect(function()
         if not isFarmUmaAvailable(name, data) then return end
-        selectedUmaName = name
-        autoFarmTargets[name] = autoFarmTargets[name] or {}
+        if selectedUmaName == name and autoFarmTargets[name] then
+            autoFarmTargets[name] = nil
+            selectedUmaName = nil
+            umaMutationGrid.Visible = false
+        else
+            selectedUmaName = name
+            autoFarmTargets[name] = autoFarmTargets[name] or {}
+            umaMutationGrid.Visible = true
+        end
         if autoFarmRefresh then autoFarmRefresh() end
     end)
     local cover = newFrame({
@@ -4370,7 +4449,9 @@ end
 local allUmaEntries = {}
 if farmEntities and farmEntities.Brainrots then
     for name, data in pairs(farmEntities.Brainrots) do
-        table.insert(allUmaEntries, { name = name, data = data })
+        if data.Rarity ~= "Exclusive" then
+            table.insert(allUmaEntries, { name = name, data = data })
+        end
     end
 end
 table.sort(allUmaEntries, function(a, b)
@@ -4478,7 +4559,13 @@ autoFarmRefresh = function()
     currentUmaLabel.Text = selectedUmaName
         and ((autoFarmTargets[selectedUmaName] and "✓ " or "") .. selectedUmaName)
         or "Select an Uma"
-    removeTargetButton.Visible = selection ~= nil
+    currentUmaLabel.Text = selectedUmaName or "Tap an Uma card"
+    configureMutationButton.Visible = selection ~= nil
+    local configureText = configureMutationButton:FindFirstChild("ChipText")
+    if configureText then
+        configureText.Text = umaMutationGrid.Visible and "Mutations: Hide" or "Mutations: Choose"
+        configureText.TextColor3 = CONFIG.TextColor
+    end
     for _, entry in ipairs(farmMutationButtons) do
         local chosen = entry.mutation == "Any"
             and selection ~= nil and next(selection) == nil
@@ -4604,9 +4691,11 @@ autoFarmRefresh()
 pcall(function()
     local kickService = require(farmReplicatedStorage.Modules.ServicesLoader.KickServiceClient)
     kickService.LevelChanged:Connect(function()
+        table.clear(farmAvailabilityByRarity)
         if autoFarmRefresh then autoFarmRefresh() end
     end)
     kickService.DistanceChanged:Connect(function()
+        table.clear(farmAvailabilityByRarity)
         if autoFarmRefresh then autoFarmRefresh() end
     end)
 end)
@@ -4666,7 +4755,7 @@ if floatingImage then
     image.BackgroundTransparency = 1
     image.Image = floatingImage
     image.ScaleType = Enum.ScaleType.Fit
-    image.ZIndex = 3
+    image.ZIndex = 81
     image.Parent = FloatBtn
 else
     newLabel({
@@ -4675,7 +4764,7 @@ else
         Font = Enum.Font.GothamBlack,
         TextSize = 20,
         TextColor3 = CONFIG.AccentColor,
-        ZIndex = 3,
+        ZIndex = 81,
     }, FloatBtn)
 end
 
