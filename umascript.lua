@@ -1569,7 +1569,9 @@ local function teleportToKick()
         return false
     end
 
-    root.CFrame = zone.CFrame + Vector3.new(0, 1.5, 0)
+    root.CFrame = zone.CFrame
+    root.AssemblyLinearVelocity = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
     return true
 end
 
@@ -1578,6 +1580,16 @@ do
     local lp = Players.LocalPlayer
     local active, token = false, 0
     local kickEvent
+    local zoneController
+
+    local function getZoneController()
+        if zoneController then return zoneController end
+        local ok, result = pcall(function()
+            return require(game:GetService("ReplicatedStorage").Modules.ControllerLoader.ZoneController)
+        end)
+        if ok then zoneController = result end
+        return zoneController
+    end
 
     local function isActive(id) return active and token == id end
 
@@ -1628,10 +1640,8 @@ do
     end
 
     local function nearKickZone()
-        local _, root = getCharacterParts()
-        local areas = workspace:FindFirstChild("Areas")
-        local zone = areas and areas:FindFirstChild("KickReady")
-        return not (zone and root) or (root.Position - zone.Position).Magnitude <= 20
+        local controller = getZoneController()
+        return controller ~= nil and controller.Zone == "KickReady"
     end
 
     local function cameraFree()
@@ -1651,6 +1661,7 @@ do
         local ok = pcall(function()
             event:FireServer(1)
         end)
+        if not ok then return false end
         local started = waitFor(id, function()
             return busy() or kickGui.Enabled
         end, 1.5)
@@ -1689,7 +1700,9 @@ do
                 waitKickCycle(id)
             elseif not nearKickZone() then
                 teleportToKick()
-                waitFor(id, ready, 3)
+                waitFor(id, function()
+                    return nearKickZone() and ready()
+                end, 5)
             elseif ready() then
                 if not startKick(id, kickGui) then
                     waitFor(id, function() return false end, 1)
@@ -1985,6 +1998,7 @@ local dailyQuestListenerAttached = false
 local AutoTrainingHandlers
 local questFarmMode
 local DailyQuestHandlers
+local teleportToOwnPlot
 
 local function getQuestLists(packet)
     local lists = {}
@@ -2088,12 +2102,17 @@ do
                         local current = tonumber(quest.Current) or 0
                         local target = tonumber(quest.Target) or math.huge
                         if current >= target then
-                            pcall(function()
+                            local claimed = pcall(function()
                                 claimEvent:FireServer(questId)
                             end)
-                            if questFarmMode == mode then
+                            if not claimed or not isActive(id) then return false end
+                            if mode == "kick" then
+                                setQuestFarmMode(nil)
+                                teleportToOwnPlot()
+                            elseif questFarmMode == mode then
                                 setQuestFarmMode(nil)
                             end
+                            return true
                         else
                             setQuestFarmMode(mode)
                             if mode == "weight" and isActive(id) then
@@ -2106,6 +2125,7 @@ do
             end
         end
 
+        local claimedOtherQuest = false
         for _, quests in ipairs(questLists) do
             for _, quest in ipairs(quests) do
                 if not isActive(id) then return end
@@ -2114,13 +2134,15 @@ do
                 local target = tonumber(quest.Target) or math.huge
                 if not getQuestFarmMode(quest) and questId
                     and not quest.Claimed and current >= target then
-                    pcall(function()
+                    local claimed = pcall(function()
                         claimEvent:FireServer(questId)
                     end)
+                    claimedOtherQuest = claimedOtherQuest or claimed
                 end
             end
         end
         setQuestFarmMode(nil)
+        return claimedOtherQuest
     end
 
     DailyQuestHandlers = {
@@ -2135,15 +2157,16 @@ do
 
             task.spawn(function()
                 while isActive(id) do
-                    pcall(processQuests, id)
-                    task.wait(8)
+                    local ok, claimed = pcall(processQuests, id)
+                    if not isActive(id) then break end
+                    task.wait(ok and claimed and 0.25 or 8)
                 end
             end)
         end,
     }
 end
 
-local function teleportToOwnPlot()
+teleportToOwnPlot = function()
     local plot = getOwnPlotModel()
     local char = Players.LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -2268,26 +2291,18 @@ local function runUmaUpgradePass()
     withSavedPlayerPosition(function()
         local net = getNetwork()
         if not net then return end
-        local plot = getOwnPlotModel()
-        local slotsFolder = plot and plot:FindFirstChild("Slots")
-        local buttons = plot and plot:FindFirstChild("Buttons")
-        if not (slotsFolder and buttons) then return end
         local ev = net:WaitForChild("rev_B_Upgrade", 5)
 
-        local lp = Players.LocalPlayer
-        for i = 1, 30 do
-            local slot = slotsFolder:FindFirstChild("Slot" .. i)
-            local target = buttons:FindFirstChild("Slot" .. i) or slot
-            local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-            if root and target and target:IsA("BasePart") then
-                root.CFrame = target.CFrame + Vector3.new(0, 3, 0)
+        forEachOccupiedSlot("Auto Upgrade Umas", function(i, uma, button)
+            if not button or not uma then return end
+            local character = Players.LocalPlayer.Character
+            local root = character and character:FindFirstChild("HumanoidRootPart")
+            if root then
+                root.CFrame = button.CFrame + Vector3.new(0, 3, 0)
                 task.wait(0.1)
             end
-            if slot and slot:FindFirstChildOfClass("Part") then
-                ev:FireServer(i)
-            end
-            task.wait(0.1)
-        end
+            ev:FireServer(i)
+        end)
     end)
 end
 
@@ -2681,13 +2696,13 @@ id = "player",
 name = "Player",
 funcs = {
 {
-title = "Jump",
-type = "slider",
-handlers = JumpHandlers
-},
-{
 title = "Fly",
 handlers = FlyHandlers
+},
+{
+    title = "Jump",
+    type = "slider",
+    handlers = JumpHandlers
 },
 {
 title = "Speed",
@@ -3777,7 +3792,6 @@ CONFIG.AccentColor,
 )
 
 local floatingImage = ICON_URLS.floating_button
-local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
 if floatingImage then
     local image = Instance.new("ImageLabel")
     image.Name = "BrandImage"
