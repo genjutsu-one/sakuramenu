@@ -1569,10 +1569,18 @@ local function teleportToKick()
         return false
     end
 
-    -- KickReady is a floor trigger. Its center is below the character's
-    -- standing position, so placing the root there can leave the player
-    -- visually at the station without entering the active zone correctly.
-    root.CFrame = zone.CFrame + Vector3.new(0, 3, 0)
+    local stationCFrame = zone.CFrame + Vector3.new(0, 3, 0)
+    local inFront = CFrame.new(
+        zone.Position + zone.CFrame.LookVector * (zone.Size.Z / 2 + 3)
+            + Vector3.new(0, 3, 0)
+    ) * zone.CFrame.Rotation
+
+    root.CFrame = inFront
+    root.AssemblyLinearVelocity = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
+    RunService.Heartbeat:Wait()
+
+    root.CFrame = stationCFrame
     root.AssemblyLinearVelocity = Vector3.zero
     root.AssemblyAngularVelocity = Vector3.zero
     return true
@@ -2706,6 +2714,11 @@ id = "player",
 name = "Player",
 funcs = {
 {
+title = "Speed",
+type = "slider",
+handlers = SpeedHandlers
+},
+{
 title = "Fly",
 handlers = FlyHandlers
 },
@@ -2713,11 +2726,6 @@ handlers = FlyHandlers
     title = "Jump",
     type = "slider",
     handlers = JumpHandlers
-},
-{
-title = "Speed",
-type = "slider",
-handlers = SpeedHandlers
 },
 {
 title = "Select Speed Upgrade Amount",
