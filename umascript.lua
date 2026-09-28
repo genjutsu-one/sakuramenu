@@ -195,15 +195,57 @@ local ICON_URLS = {
     floating_button = "https://raw.githubusercontent.com/genjutsu-one/sakuramenu/main/file_0000000001308210b2a1abcfd640b720.png",
 }
 
+local assetCache = {}
+
+local function getCachedAsset(name, url)
+    local setter = getcustomasset or getsynasset
+    if not setter or not writefile or not game.HttpGet then return nil end
+    if assetCache[name] then return assetCache[name] end
+
+    local folder = CONFIG_FOLDER .. "/assets"
+    local path = folder .. "/" .. name .. ".png"
+    pcall(function()
+        if makefolder and isfolder and not isfolder(CONFIG_FOLDER) then
+            makefolder(CONFIG_FOLDER)
+        end
+        if makefolder and isfolder and not isfolder(folder) then
+            makefolder(folder)
+        end
+    end)
+
+    local exists = false
+    if isfile then
+        local ok, result = pcall(isfile, path)
+        exists = ok and result
+    end
+    if not exists then
+        local ok, data = pcall(function() return game:HttpGet(url) end)
+        if not ok or type(data) ~= "string" then return nil end
+        local a, b, c, d = string.byte(data, 1, 4)
+        if a ~= 137 or b ~= 80 or c ~= 78 or d ~= 71 then return nil end
+        local written = pcall(writefile, path, data)
+        if not written then return nil end
+    end
+
+    local ok, asset = pcall(setter, path)
+    if ok then
+        assetCache[name] = asset
+        return asset
+    end
+    return nil
+end
+
 local function materialImage(kind, parent, size, tint)
     local url = ICON_URLS[kind]
     if not url then return nil end
+    local asset = getCachedAsset(kind .. "_white", url)
+    if not asset then return nil end
 
     local img = Instance.new("ImageLabel")
     img.Name = kind .. "Icon"
     img.Size = UDim2.fromOffset(size, size)
     img.BackgroundTransparency = 1
-    img.Image = url
+    img.Image = asset
     img.ImageColor3 = tint or CONFIG.AccentColor
     img.ScaleType = Enum.ScaleType.Fit
     img.Parent = parent
@@ -3735,14 +3777,26 @@ CONFIG.AccentColor,
 )
 
 local floatingImage = ICON_URLS.floating_button
-local image = Instance.new("ImageLabel")
-image.Name = "BrandImage"
-image.Size = UDim2.fromScale(1, 1)
-image.BackgroundTransparency = 1
-image.Image = floatingImage
-image.ScaleType = Enum.ScaleType.Fit
-image.ZIndex = 3
-image.Parent = FloatBtn
+local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
+if floatingImage then
+    local image = Instance.new("ImageLabel")
+    image.Name = "BrandImage"
+    image.Size = UDim2.fromScale(1, 1)
+    image.BackgroundTransparency = 1
+    image.Image = floatingImage
+    image.ScaleType = Enum.ScaleType.Fit
+    image.ZIndex = 3
+    image.Parent = FloatBtn
+else
+    newLabel({
+        Text = "F",
+        Size = UDim2.fromScale(1, 1),
+        Font = Enum.Font.GothamBlack,
+        TextSize = 20,
+        TextColor3 = CONFIG.AccentColor,
+        ZIndex = 3,
+    }, FloatBtn)
+end
 
 do
 local dragging = false
