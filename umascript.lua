@@ -4129,6 +4129,7 @@ local function makeFarmChip(parent, text, position, size)
         BackgroundColor3 = CONFIG.CardColor,
         BackgroundTransparency = 0,
         BorderSizePixel = 0,
+        ClipsDescendants = true,
         TextColor3 = mutationColor or CONFIG.MutedTextColor,
         Font = Enum.Font.GothamBold,
         TextSize = 11,
@@ -4158,15 +4159,17 @@ end
 local rarityBar = newFrame({
     Name = "RarityFilters",
     Position = UDim2.new(0, 12, 0, 38),
-    Size = UDim2.new(0.61, -12, 0, 22),
+    Size = UDim2.new(0.61, -12, 0, 24),
     BackgroundTransparency = 1,
+    ClipsDescendants = true,
     ZIndex = 21,
 }, autoFarmPanel)
 local mutationBar = newFrame({
     Name = "MutationFilters",
     Position = UDim2.new(0, 12, 0, 64),
-    Size = UDim2.new(0.61, -12, 0, 22),
+    Size = UDim2.new(0.61, -12, 0, 24),
     BackgroundTransparency = 1,
+    ClipsDescendants = true,
     ZIndex = 21,
 }, autoFarmPanel)
 
@@ -4215,12 +4218,13 @@ corner(8, farmMutationPane)
 local umaMutationGrid = Instance.new("ScrollingFrame")
 umaMutationGrid.Name = "MutationChoices"
 umaMutationGrid.Position = UDim2.new(0, 6, 0, 6)
-umaMutationGrid.Size = UDim2.new(1, -12, 1, -12)
+umaMutationGrid.Size = UDim2.new(1, -18, 1, -12)
 umaMutationGrid.Visible = true
 umaMutationGrid.BackgroundColor3 = CONFIG.CardColor
 umaMutationGrid.BackgroundTransparency = 0.03
 umaMutationGrid.BorderSizePixel = 0
 umaMutationGrid.ScrollBarThickness = 4
+umaMutationGrid.ScrollBarInset = Enum.ScrollBarInset.ScrollBar
 umaMutationGrid.ScrollingDirection = Enum.ScrollingDirection.Y
 umaMutationGrid.ClipsDescendants = true
 umaMutationGrid.ScrollBarImageColor3 = CONFIG.AccentColor
@@ -4261,10 +4265,11 @@ corner(8, farmStartButton)
 
 local function buildFarmFilterRow(parent, values, stateMap, yOffset)
     local scroll = Instance.new("ScrollingFrame")
-    scroll.Position = UDim2.new(0, 0, 0, 0)
-    scroll.Size = UDim2.new(1, 0, 1, 0)
+    scroll.Position = UDim2.new(0, 0, 0, 2)
+    scroll.Size = UDim2.new(1, 0, 1, -4)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
+    scroll.ClipsDescendants = true
     scroll.ScrollingDirection = Enum.ScrollingDirection.X
     scroll.ScrollBarThickness = 0
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.X
