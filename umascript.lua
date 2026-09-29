@@ -4158,14 +4158,14 @@ end
 local rarityBar = newFrame({
     Name = "RarityFilters",
     Position = UDim2.new(0, 12, 0, 38),
-    Size = UDim2.new(0.60, -24, 0, 22),
+    Size = UDim2.new(0.61, -12, 0, 22),
     BackgroundTransparency = 1,
     ZIndex = 21,
 }, autoFarmPanel)
 local mutationBar = newFrame({
     Name = "MutationFilters",
     Position = UDim2.new(0, 12, 0, 64),
-    Size = UDim2.new(0.60, -24, 0, 22),
+    Size = UDim2.new(0.61, -12, 0, 22),
     BackgroundTransparency = 1,
     ZIndex = 21,
 }, autoFarmPanel)
@@ -4203,8 +4203,8 @@ farmGrid.Parent = farmCardScroll
 
 local farmMutationPane = newFrame({
     Name = "UmaMutations",
-    Position = UDim2.new(0.64, 0, 0, 38),
-    Size = UDim2.new(0.34, -12, 1, -96),
+    Position = UDim2.new(0.62, 0, 0, 38),
+    Size = UDim2.new(0.37, -12, 1, -96),
     BackgroundColor3 = CONFIG.CardColor,
     BackgroundTransparency = 0.12,
     ClipsDescendants = true,
@@ -4214,8 +4214,8 @@ local farmMutationPane = newFrame({
 corner(8, farmMutationPane)
 local umaMutationGrid = Instance.new("ScrollingFrame")
 umaMutationGrid.Name = "MutationChoices"
-umaMutationGrid.Position = UDim2.new(0, 8, 0, 8)
-umaMutationGrid.Size = UDim2.new(1, -16, 1, -16)
+umaMutationGrid.Position = UDim2.new(0, 6, 0, 6)
+umaMutationGrid.Size = UDim2.new(1, -12, 1, -12)
 umaMutationGrid.Visible = true
 umaMutationGrid.BackgroundColor3 = CONFIG.CardColor
 umaMutationGrid.BackgroundTransparency = 0.03
@@ -4229,7 +4229,6 @@ umaMutationGrid.CanvasSize = UDim2.new()
 umaMutationGrid.ZIndex = 22
 umaMutationGrid.Parent = farmMutationPane
 corner(8, umaMutationGrid)
-stroke(umaMutationGrid, CONFIG.AccentColor, 0.88, 1)
 local umaMutationLayout = Instance.new("UIGridLayout")
 umaMutationLayout.CellSize = UDim2.new(0.5, -4, 0, 25)
 umaMutationLayout.CellPadding = UDim2.fromOffset(4, 3)
@@ -4573,7 +4572,7 @@ local function updateFarmFilterColors()
                     chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
                         or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
                     chipStroke.Transparency = not available and 0.02 or (chosen and 0 or 0.88)
-                    chipStroke.Thickness = not available and 1.25 or (chosen and 1.25 or 1)
+                    chipStroke.Thickness = not available and 0.8 or (chosen and 0.6 or 0.8)
                 end
                 child.Active = available
                 child.AutoButtonColor = false
@@ -4616,7 +4615,7 @@ autoFarmRefresh = function()
         if mutationStroke then
             mutationStroke.Color = chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor
             mutationStroke.Transparency = chosen and 0 or 0.88
-            mutationStroke.Thickness = chosen and 1.25 or 1
+            mutationStroke.Thickness = chosen and 0.6 or 0.8
         end
         local chipText = entry.button:FindFirstChild("ChipText")
         if chipText then
