@@ -2759,6 +2759,7 @@ local autoFarmTargets = {}
 local autoFarmSelectedMutations = {}
 local autoFarmRarities = {}
 local autoFarmMutations = {}
+local autoFarmInventoryConnections = {}
 local autoFarmRefresh
 local autoFarmStart
 local autoFarmStop
@@ -3891,6 +3892,7 @@ end)
 local farmRarityOrder = {}
 local farmRarityThreshold = {}
 local farmPoolNames = {}
+local farmPoolRarity = {}
 local farmAvailabilityByRarity = {}
 if farmRarityData then
     for _, entry in ipairs(farmRarityData.DistanceThresholds or {}) do
@@ -3901,8 +3903,13 @@ if farmRarityData then
         farmPoolNames[rarity] = {}
         for _, item in ipairs(pool) do
             farmPoolNames[rarity][item.Name] = true
+            farmPoolRarity[item.Name] = rarity
         end
     end
+end
+
+local function getFarmUmaRarity(name, data)
+    return farmPoolRarity[name] or (data and data.Rarity)
 end
 for index = #farmRarityOrder, 1, -1 do
     if farmRarityOrder[index] == "Exclusive" then
@@ -3948,22 +3955,23 @@ local function getFarmPowerLevel(rarity)
 end
 
 local function isFarmUmaAvailable(name, data)
-    if not (data and data.Rarity and farmPoolNames[data.Rarity]
-        and farmPoolNames[data.Rarity][name]) then
+    local rarity = getFarmUmaRarity(name, data)
+    if not (rarity and farmPoolNames[rarity] and farmPoolNames[rarity][name]) then
         return false
     end
-    if farmAvailabilityByRarity[data.Rarity] == nil then
-        farmAvailabilityByRarity[data.Rarity] = getFarmPowerLevel(data.Rarity) ~= nil
+    if farmAvailabilityByRarity[rarity] == nil then
+        farmAvailabilityByRarity[rarity] = getFarmPowerLevel(rarity) ~= nil
     end
-    return farmAvailabilityByRarity[data.Rarity]
+    return farmAvailabilityByRarity[rarity]
 end
 
 if farmEntities and farmEntities.Brainrots then
     local extraRarities = {}
-    for _, data in pairs(farmEntities.Brainrots) do
-    if data.Rarity and data.Rarity ~= "Exclusive" and not farmRarityThreshold[data.Rarity]
-            and not table.find(extraRarities, data.Rarity) then
-            table.insert(extraRarities, data.Rarity)
+    for name, data in pairs(farmEntities.Brainrots) do
+        local rarity = getFarmUmaRarity(name, data)
+        if rarity and rarity ~= "Exclusive" and not farmRarityThreshold[rarity]
+            and not table.find(extraRarities, rarity) then
+            table.insert(extraRarities, rarity)
         end
     end
     table.sort(extraRarities)
@@ -4130,7 +4138,8 @@ local function makeFarmChip(parent, text, position, size)
     local buttonStroke = stroke(button, mutationColor or CONFIG.AccentColor, 0.88, 1)
     buttonStroke.Name = "FarmChipStroke"
     local textLabel = newLabel({
-        Name = "ChipText", Text = text, Size = UDim2.fromScale(1, 1),
+        Name = "ChipText", Text = text,
+        Position = UDim2.fromOffset(3, 2), Size = UDim2.new(1, -6, 1, -4),
         BackgroundTransparency = 1, TextColor3 = mutationColor or CONFIG.MutedTextColor,
         Font = Enum.Font.GothamBold, TextSize = 11, ZIndex = 23,
     }, button)
@@ -4356,7 +4365,7 @@ for index, mutation in ipairs({ "Any", "Normal", table.unpack(farmMutationData a
     table.insert(farmMutationButtons, { button = button, mutation = mutation })
 end
 
-local function addFarmCard(name, data, order)
+local function addFarmCard(name, data, rarity, order)
     local card = newFrame({
         Name = "FarmCard_" .. name,
         Size = UDim2.fromOffset(88, 96),
@@ -4408,20 +4417,20 @@ local function addFarmCard(name, data, order)
     local rarityLabel
     for _, descendant in ipairs(card:GetDescendants()) do
         if descendant:IsA("TextLabel")
-            and string.lower(descendant.Text) == string.lower(data.Rarity or "") then
+            and string.lower(descendant.Text) == string.lower(rarity or "") then
             rarityLabel = descendant
             break
         end
     end
     if not rarityLabel then
         rarityLabel = newLabel({
-            Name = "FarmRarity", Text = data.Rarity or "Common",
+            Name = "FarmRarity", Text = rarity or "Common",
             Position = UDim2.new(0, 3, 0, 1), Size = UDim2.new(1, -6, 0, 13),
             BackgroundTransparency = 1, TextSize = 8, TextXAlignment = Enum.TextXAlignment.Center,
             ZIndex = 25,
         }, card)
     end
-    local rarityInfo = farmRarityData and farmRarityData.Index and farmRarityData.Index[data.Rarity]
+    local rarityInfo = farmRarityData and farmRarityData.Index and farmRarityData.Index[rarity]
     if rarityLabel and not rarityLabel:FindFirstChildOfClass("UIStroke") then
         stroke(rarityLabel, Color3.new(0, 0, 0), 0.65, 1)
     end
@@ -4457,7 +4466,7 @@ local function addFarmCard(name, data, order)
     }, card)
     corner(6, cover)
     local lockLabel = newLabel({
-        Text = farmPoolNames[data.Rarity] and "POWER TOO LOW" or "EVENT ONLY",
+        Text = farmPoolNames[rarity] and "POWER TOO LOW" or "EVENT ONLY",
         Size = UDim2.fromScale(1, 1),
         TextColor3 = Color3.fromRGB(165, 165, 170),
         Font = Enum.Font.GothamBold,
@@ -4479,19 +4488,20 @@ end
 local allUmaEntries = {}
 if farmEntities and farmEntities.Brainrots then
     for name, data in pairs(farmEntities.Brainrots) do
-        if data.Rarity ~= "Exclusive" then
-            table.insert(allUmaEntries, { name = name, data = data })
+        local rarity = getFarmUmaRarity(name, data)
+        if rarity ~= "Exclusive" then
+            table.insert(allUmaEntries, { name = name, data = data, rarity = rarity })
         end
     end
 end
 table.sort(allUmaEntries, function(a, b)
-    local aOrder = table.find(farmRarityOrder, a.data.Rarity) or 999
-    local bOrder = table.find(farmRarityOrder, b.data.Rarity) or 999
+    local aOrder = table.find(farmRarityOrder, a.rarity) or 999
+    local bOrder = table.find(farmRarityOrder, b.rarity) or 999
     if aOrder == bOrder then return a.name < b.name end
     return aOrder < bOrder
 end)
 for index, item in ipairs(allUmaEntries) do
-    addFarmCard(item.name, item.data, index)
+    addFarmCard(item.name, item.data, item.rarity, index)
 end
 
 local function selectedMutationMatch(selection, actual)
@@ -4508,11 +4518,13 @@ local function isFarmTargetTool(tool)
     local data = farmEntities.Brainrots[tool.Name]
     local actual = farmMutationData.GetMutationsFromInstance(tool)
     local specific = autoFarmTargets[tool.Name]
-    if specific then
+    if next(autoFarmTargets) ~= nil then
+        if not specific then return false end
         return selectedMutationMatch(specific, actual)
     end
-    if autoFarmRarities[data.Rarity] and farmPoolNames[data.Rarity]
-        and farmPoolNames[data.Rarity][tool.Name]
+    local rarity = getFarmUmaRarity(tool.Name, data)
+    if autoFarmRarities[rarity] and farmPoolNames[rarity]
+        and farmPoolNames[rarity][tool.Name]
         and selectedMutationMatch(autoFarmMutations, actual) then
         return true
     end
@@ -4521,13 +4533,14 @@ end
 
 local function getFarmPlan()
     local plan = {}
+    local hasSpecificTargets = next(autoFarmTargets) ~= nil
     for _, item in ipairs(allUmaEntries) do
         if isFarmUmaAvailable(item.name, item.data)
-            and (autoFarmTargets[item.name] ~= nil
-                or (autoFarmRarities[item.data.Rarity]
-                    and farmPoolNames[item.data.Rarity]
-                    and farmPoolNames[item.data.Rarity][item.name])) then
-            table.insert(plan, { name = item.name, rarity = item.data.Rarity })
+            and ((hasSpecificTargets and autoFarmTargets[item.name] ~= nil)
+                or (not hasSpecificTargets and autoFarmRarities[item.rarity]
+                    and farmPoolNames[item.rarity]
+                    and farmPoolNames[item.rarity][item.name])) then
+            table.insert(plan, { name = item.name, rarity = item.rarity })
         end
     end
     return plan
@@ -4544,7 +4557,7 @@ local function updateFarmFilterColors()
                 if row == rarityBar then
                     available = false
                     for _, item in ipairs(allUmaEntries) do
-                        if item.data.Rarity == value and isFarmUmaAvailable(item.name, item.data) then
+                        if item.rarity == value and isFarmUmaAvailable(item.name, item.data) then
                             available = true
                             break
                         end
@@ -4554,25 +4567,7 @@ local function updateFarmFilterColors()
                     and Color3.fromRGB(135, 16, 30) or CONFIG.CardColor
                 tween(child, 0.16, { BackgroundColor3 = targetBackground })
                 child.BackgroundTransparency = 0
-                local chipText = child:FindFirstChild("ChipText")
                 local chipStroke = child:FindFirstChild("FarmChipStroke")
-                if chipText then
-                    local mutInfo = farmMutationData and farmMutationData.Index
-                        and farmMutationData.Index[value]
-                    local rarityInfo = farmRarityData and farmRarityData.Index
-                        and farmRarityData.Index[value]
-                    chipText.TextColor3 = mutInfo and mutInfo.Color
-                        or (rarityInfo and Color3.new(1, 1, 1) or CONFIG.MutedTextColor)
-                    chipText.TextStrokeTransparency = 1
-                    local textOutline = chipText:FindFirstChildOfClass("UIStroke")
-                    if textOutline then
-                        textOutline.Color = Color3.new(0, 0, 0)
-                        textOutline.Transparency = 0.7
-                    end
-                    for _, gradient in ipairs(chipText:GetChildren()) do
-                        if gradient:IsA("UIGradient") then gradient.Enabled = true end
-                    end
-                end
                 if chipStroke then
                     chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
                         or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
@@ -4594,13 +4589,13 @@ autoFarmRefresh = function()
         record.click.AutoButtonColor = record.availability
         local chosen = autoFarmTargets[record.name] ~= nil
         record.cover.Visible = not record.availability
-        record.lockLabel.Text = farmPoolNames[record.data.Rarity]
+        record.lockLabel.Text = farmPoolNames[getFarmUmaRarity(record.name, record.data)]
             and "POWER TOO LOW" or "EVENT ONLY"
         record.outline.Color = not record.availability and Color3.fromRGB(255, 28, 45)
-            or (chosen and Color3.fromRGB(255, 76, 145) or CONFIG.AccentColor)
+            or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
         record.outline.Transparency = not record.availability and 0.04
-            or (chosen and 0.12 or 0.8)
-        record.outline.Thickness = not record.availability and 2 or 1
+            or (chosen and 0 or 0.8)
+        record.outline.Thickness = not record.availability and 2 or (chosen and 2.5 or 1)
         record.cover.BackgroundColor3 = Color3.fromRGB(55, 5, 12)
         record.cover.BackgroundTransparency = 0.24
         record.lockLabel.TextColor3 = Color3.fromRGB(255, 50, 65)
@@ -4663,10 +4658,54 @@ autoFarmStart = function()
     autoFarmToken = autoFarmToken + 1
     local id = autoFarmToken
     local nextPlanIndex = 0
-    local kickTeleportCount = 0
+    for _, connection in ipairs(autoFarmInventoryConnections) do
+        connection:Disconnect()
+    end
+    table.clear(autoFarmInventoryConnections)
     local function farmIsRunning()
         return autoFarmEnabled and autoFarmStarted and autoFarmToken == id
     end
+    local seenInventoryTools = setmetatable({}, { __mode = "k" })
+    local collectedUmaCount = 0
+    local baseVisitQueued = false
+    local function noteCollectedUma(tool)
+        if not farmIsRunning() or not isUmaTool(tool) then return end
+        collectedUmaCount = collectedUmaCount + 1
+        if collectedUmaCount >= 5 then
+            baseVisitQueued = true
+        end
+    end
+    local function watchInventoryTool(tool, alreadyOwned)
+        if not (tool and tool:IsA("Tool")) or seenInventoryTools[tool] then return end
+        seenInventoryTools[tool] = true
+        if alreadyOwned then
+            if isUmaTool(tool) then
+                collectedUmaCount = collectedUmaCount + 1
+                if collectedUmaCount >= 5 then baseVisitQueued = true end
+            end
+        else
+            task.delay(0.2, function()
+                noteCollectedUma(tool)
+            end)
+        end
+    end
+    local lp = Players.LocalPlayer
+    local backpack = lp:FindFirstChild("Backpack") or lp:WaitForChild("Backpack", 5)
+    if backpack then
+        table.insert(autoFarmInventoryConnections, backpack.ChildAdded:Connect(function(tool)
+            watchInventoryTool(tool, false)
+        end))
+        for _, tool in ipairs(backpack:GetChildren()) do watchInventoryTool(tool, true) end
+    end
+    local function watchCharacter(character)
+        if not character then return end
+        table.insert(autoFarmInventoryConnections, character.ChildAdded:Connect(function(tool)
+            watchInventoryTool(tool, false)
+        end))
+        for _, tool in ipairs(character:GetChildren()) do watchInventoryTool(tool, true) end
+    end
+    watchCharacter(lp.Character)
+    table.insert(autoFarmInventoryConnections, lp.CharacterAdded:Connect(watchCharacter))
     local function sellUnwantedTool(tool, humanoid, backpack, sellRemote)
         local lp = Players.LocalPlayer
         if not farmIsRunning() or not isUmaTool(tool) or isFarmTargetTool(tool) then return end
@@ -4700,30 +4739,56 @@ autoFarmStart = function()
     end
     local function sellUnwantedAtBase()
         if not farmIsRunning() or not teleportToOwnPlot() then return false end
-        task.wait(0.35)
-        local idleDeadline = os.clock() + 4
-        while farmIsRunning() and os.clock() < idleDeadline
-            and (Players.LocalPlayer:GetAttribute("LocalKickBusy") == true
-                or Players.LocalPlayer:GetAttribute("IsKicking") == true) do
-            task.wait(0.1)
+        baseVisitQueued = false
+        collectedUmaCount = 0
+        local stableSince = os.clock()
+        local previousCount = -1
+        local inventorySettled = false
+        while farmIsRunning() do
+            local player = Players.LocalPlayer
+            local currentBackpack = player:FindFirstChild("Backpack")
+            local currentCharacter = player.Character
+            if currentBackpack then
+                local currentCount = 0
+                for _, container in ipairs({ currentBackpack, currentCharacter }) do
+                    if container then
+                        for _, item in ipairs(container:GetChildren()) do
+                            if item:IsA("Tool") and isUmaTool(item) then
+                                currentCount = currentCount + 1
+                            end
+                        end
+                    end
+                end
+                if currentCount ~= previousCount then
+                    previousCount = currentCount
+                    stableSince = os.clock()
+                elseif os.clock() - stableSince >= 0.75
+                    and Players.LocalPlayer:GetAttribute("LocalKickBusy") ~= true
+                    and Players.LocalPlayer:GetAttribute("IsKicking") ~= true then
+                    inventorySettled = true
+                    break
+                end
+            end
+            task.wait(0.05)
         end
 
-        local lp = Players.LocalPlayer
-        local character = lp.Character
-        local backpack = lp:FindFirstChild("Backpack")
+        if not farmIsRunning() or not inventorySettled then return false end
+        local player = Players.LocalPlayer
+        local character = player.Character
+        local currentBackpack = player:FindFirstChild("Backpack")
         local humanoid = character and character:FindFirstChildOfClass("Humanoid")
         local net = getNetwork()
         local sellRemote = net and net:FindFirstChild("ref_B_Sell")
-        if backpack and humanoid and sellRemote and farmEntities and farmMutationData then
+        if currentBackpack and humanoid and sellRemote and farmEntities and farmMutationData then
             local tools = {}
-            for _, tool in ipairs(backpack:GetChildren()) do
+            for _, tool in ipairs(currentBackpack:GetChildren()) do
                 if tool:IsA("Tool") then table.insert(tools, tool) end
             end
             local held = character and character:FindFirstChildOfClass("Tool")
             if held then table.insert(tools, held) end
             for _, tool in ipairs(tools) do
                 if not farmIsRunning() then break end
-                sellUnwantedTool(tool, humanoid, backpack, sellRemote)
+                sellUnwantedTool(tool, humanoid, currentBackpack, sellRemote)
             end
         end
 
@@ -4733,11 +4798,7 @@ autoFarmStart = function()
     end
     autoFarmOnKickTeleport = function()
         if not farmIsRunning() then return end
-        kickTeleportCount = kickTeleportCount + 1
-        if kickTeleportCount < 5 then return end
-        if sellUnwantedAtBase() then
-            kickTeleportCount = 0
-        end
+        if baseVisitQueued then sellUnwantedAtBase() end
     end
     autoFarmPrepareKick = function()
         local currentPlan = getFarmPlan()
@@ -4762,6 +4823,10 @@ autoFarmStop = function()
     autoFarmStarted = false
     autoFarmPrepareKick = nil
     autoFarmOnKickTeleport = nil
+    for _, connection in ipairs(autoFarmInventoryConnections) do
+        connection:Disconnect()
+    end
+    table.clear(autoFarmInventoryConnections)
     KickHandlers.onToggle(false)
     local net = getNetwork()
     local setter = net and net:FindFirstChild("rev_KickPowerSelection_Set")
