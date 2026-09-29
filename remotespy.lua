@@ -1,6 +1,6 @@
 --!native
 -- https://github.com/78n/SimpleSpy 50/50 this breaks but it's a beta for a reason!
--- Anti-BAC build: hard-ignore AC channels, riskymode off, zero-introspection hook
+-- Anti-BAC v3 build: snapshot sanitizer + AC telemetry hard-ignore + zero-introspection hook
 
 if getgenv().SimpleSpyExecuted and type(getgenv().SimpleSpyShutdown) == "function" then
     getgenv().SimpleSpyShutdown()
@@ -11,7 +11,7 @@ local realconfigs = {
     autoblock = false,
     funcEnabled = true,
     advancedinfo = false,
-    riskymode = false, -- включает debug.info/getcallingscript внутри хука (для BAC-игр НЕ ТРОГАТЬ)
+    riskymode = false,
     supersecretdevtoggle = false
 }
 
@@ -49,6 +49,9 @@ local clone = table.clone
 local function blankfunction(...)
     return ...
 end
+
+local CHECKCALLER = checkcaller or function() return false end
+local TYPEOF = typeof
 
 local get_thread_identity = (syn and syn.get_thread_identity) or getidentity or getthreadidentity
 local set_thread_identity = (syn and syn.set_thread_identity) or setidentity
@@ -1570,42 +1573,33 @@ local function taskscheduler()
 end
 
 -- =====================================================================
--- Anti-BAC: hard ignore for AC heartbeat channels (Ping, GUID-remotes)
+-- Anti-BAC v3: telemetry neutralization for "Steal an Egg" family
 -- =====================================================================
 local AC_NAMES = {
-    Ping = true,
-    Heartbeat = true,
-    KeepAlive = true,
-    Handshake = true,
-    Analytics = true,
-    Metrics = true,
-    Telemetry = true,
-    Integrity = true,
-    ClientPing = true,
-    ServerPing = true,
-    HeartbeatPing = true,
-    HeartbeatPong = true,
-    ConnectionCheck = true,
+    Ping = true, Heartbeat = true, KeepAlive = true, Handshake = true,
+    Analytics = true, Metrics = true, Telemetry = true, Integrity = true,
+    ClientPing = true, ServerPing = true, HeartbeatPing = true,
+    HeartbeatPong = true, ConnectionCheck = true, Fps = true,
 }
 local UUID_PATTERN = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 local ignoreCache = {}
 
-local function isIgnored(remote)
-    local cached = ignoreCache[remote]
-    if cached ~= nil then return cached end
-    local name = remote.Name
-    local ign = (AC_NAMES[name] == true) or (name:match(UUID_PATTERN) ~= nil)
-    ignoreCache[remote] = ign
-    return ign
+local function isAcRemote(remote, name)
+    local c = ignoreCache[remote]
+    if c == nil then
+        c = (AC_NAMES[name] == true)
+            or (name:match(UUID_PATTERN) ~= nil)
+            or (name:find("RigSync", 1, true) ~= nil)
+            or (name:find("Probe", 1, true) ~= nil)
+        ignoreCache[remote] = c
+    end
+    return c
 end
 
-local function tablecheck(tabletocheck, instance, id, name)
-    return tabletocheck[instance] == true
-        or tabletocheck[id] == true
-        or (name and tabletocheck[name] == true)
+local function tablecheck(t, instance, id, name)
+    return t[instance] == true or t[id] == true or (name ~= nil and t[name] == true)
 end
 
--- Планировщик-вход: минимальный footprint, БЕЗ debug.info/getcallingscript по умолчанию
 local function capture(method, remote, mm, ...)
     local entry = {
         method = method,
@@ -1622,16 +1616,21 @@ end
 
 local newindex = function(method, originalfunction, ...)
     local remote = ...
-    if typeof(remote) == "Instance" then
+    if TYPEOF(remote) == "Instance" then
         local cn = remote.ClassName
-        if (cn == "RemoteEvent" or cn == "RemoteFunction" or cn == "UnreliableRemoteEvent")
-            and not isIgnored(remote)
-            and not tablecheck(blacklist, remote, remote, remote.Name)
-        then
-            local isCaller = false
-            pcall(function() isCaller = checkcaller() end)
-            if configs.logcheckcaller or not isCaller then
-                capture(method, remote, "__index", select(2, ...))
+        if cn == "RemoteEvent" or cn == "RemoteFunction" or cn == "UnreliableRemoteEvent" then
+            local name = remote.Name
+            if name == "Request" then
+                local first = select(2, ...)
+                if first == "snapshot" then
+                    return originalfunction(remote, "snapshot", {lightweight = true})
+                end
+                return originalfunction(...)
+            end
+            if not isAcRemote(remote, name) and not tablecheck(blacklist, remote, remote, name) then
+                if configs.logcheckcaller or not CHECKCALLER() then
+                    capture(method, remote, "__index", select(2, ...))
+                end
             end
         end
     end
@@ -1642,16 +1641,21 @@ local newnamecall = newcclosure(function(...)
     local method = getnamecallmethod()
     if method == "FireServer" or method == "fireServer" or method == "InvokeServer" or method == "invokeServer" then
         local remote = ...
-        if typeof(remote) == "Instance" then
+        if TYPEOF(remote) == "Instance" then
             local cn = remote.ClassName
-            if (cn == "RemoteEvent" or cn == "RemoteFunction" or cn == "UnreliableRemoteEvent")
-                and not isIgnored(remote)
-                and not tablecheck(blacklist, remote, remote, remote.Name)
-            then
-                local isCaller = false
-                pcall(function() isCaller = checkcaller() end)
-                if configs.logcheckcaller or not isCaller then
-                    capture(method, remote, "__namecall", select(2, ...))
+            if cn == "RemoteEvent" or cn == "RemoteFunction" or cn == "UnreliableRemoteEvent" then
+                local name = remote.Name
+                if name == "Request" then
+                    local first = select(2, ...)
+                    if first == "snapshot" then
+                        return originalnamecall(remote, "snapshot", {lightweight = true})
+                    end
+                    return originalnamecall(...)
+                end
+                if not isAcRemote(remote, name) and not tablecheck(blacklist, remote, remote, name) then
+                    if configs.logcheckcaller or not CHECKCALLER() then
+                        capture(method, remote, "__namecall", select(2, ...))
+                    end
                 end
             end
         end
