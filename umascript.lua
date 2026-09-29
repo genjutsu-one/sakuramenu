@@ -4138,21 +4138,6 @@ local function makeFarmChip(parent, text, position, size)
     local buttonStroke = stroke(button, mutationColor or CONFIG.AccentColor, 0.88, 1)
     buttonStroke.Name = "FarmChipStroke"
     buttonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    local selectionOutline = newFrame({
-        Name = "FarmSelectionOutline",
-        Size = UDim2.fromScale(1, 1),
-        Position = UDim2.fromScale(0, 0),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        Visible = false,
-        Active = false,
-        Selectable = false,
-        ZIndex = button.ZIndex + 2,
-    }, button)
-    corner(8, selectionOutline)
-    local selectionStroke = stroke(selectionOutline, Color3.new(1, 1, 1), 0, 2.5)
-    selectionStroke.Name = "FarmSelectionStroke"
-    selectionStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     local textLabel = newLabel({
         Name = "ChipText", Text = text,
         Position = UDim2.fromOffset(3, 2), Size = UDim2.new(1, -6, 1, -4),
@@ -4583,16 +4568,12 @@ local function updateFarmFilterColors()
                     and Color3.fromRGB(135, 16, 30) or CONFIG.CardColor
                 tween(child, 0.16, { BackgroundColor3 = targetBackground })
                 child.BackgroundTransparency = 0
-                child.BorderColor3 = Color3.new(1, 1, 1)
-                child.BorderSizePixel = chosen and available and 2 or 0
                 local chipStroke = child:FindFirstChild("FarmChipStroke")
-                local selectionOutline = child:FindFirstChild("FarmSelectionOutline")
-                if selectionOutline then selectionOutline.Visible = chosen == true and available end
                 if chipStroke then
                     chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
                         or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
                     chipStroke.Transparency = not available and 0.02 or (chosen and 0 or 0.88)
-                    chipStroke.Thickness = not available and 1.5 or (chosen and 2.5 or 1)
+                    chipStroke.Thickness = not available and 1.25 or (chosen and 1.25 or 1)
                 end
                 child.Active = available
                 child.AutoButtonColor = false
@@ -4630,16 +4611,12 @@ autoFarmRefresh = function()
             and selectedCount > 0 and next(autoFarmSelectedMutations) == nil
             or selectedCount > 0 and autoFarmSelectedMutations[entry.mutation] == true
         tween(entry.button, 0.16, { BackgroundColor3 = CONFIG.CardColor })
-        entry.button.BorderColor3 = Color3.new(1, 1, 1)
-        entry.button.BorderSizePixel = chosen and 2 or 0
         local mutationStroke = entry.button:FindFirstChild("FarmChipStroke")
-        local selectionOutline = entry.button:FindFirstChild("FarmSelectionOutline")
-        if selectionOutline then selectionOutline.Visible = chosen end
         entry.button.AutoButtonColor = false
         if mutationStroke then
             mutationStroke.Color = chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor
             mutationStroke.Transparency = chosen and 0 or 0.88
-            mutationStroke.Thickness = chosen and 2.5 or 1
+            mutationStroke.Thickness = chosen and 1.25 or 1
         end
         local chipText = entry.button:FindFirstChild("ChipText")
         if chipText then
