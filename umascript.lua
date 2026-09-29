@@ -4129,7 +4129,6 @@ local function makeFarmChip(parent, text, position, size)
         BackgroundColor3 = CONFIG.CardColor,
         BackgroundTransparency = 0,
         BorderSizePixel = 0,
-        ClipsDescendants = true,
         TextColor3 = mutationColor or CONFIG.MutedTextColor,
         Font = Enum.Font.GothamBold,
         TextSize = 11,
@@ -4161,7 +4160,6 @@ local rarityBar = newFrame({
     Position = UDim2.new(0, 12, 0, 38),
     Size = UDim2.new(0.61, -12, 0, 22),
     BackgroundTransparency = 1,
-    ClipsDescendants = true,
     ZIndex = 21,
 }, autoFarmPanel)
 local mutationBar = newFrame({
@@ -4169,7 +4167,6 @@ local mutationBar = newFrame({
     Position = UDim2.new(0, 12, 0, 64),
     Size = UDim2.new(0.61, -12, 0, 22),
     BackgroundTransparency = 1,
-    ClipsDescendants = true,
     ZIndex = 21,
 }, autoFarmPanel)
 
@@ -4268,7 +4265,6 @@ local function buildFarmFilterRow(parent, values, stateMap, yOffset)
     scroll.Size = UDim2.new(1, 0, 1, 0)
     scroll.BackgroundTransparency = 1
     scroll.BorderSizePixel = 0
-    scroll.ClipsDescendants = true
     scroll.ScrollingDirection = Enum.ScrollingDirection.X
     scroll.ScrollBarThickness = 0
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.X
