@@ -4086,34 +4086,47 @@ end)
 
 local farmPanelTransition = 0
 local farmPanelSize = UDim2.fromScale(0.72, 0.76)
+local farmPanelTween
 showFarmPanel = function()
     farmPanelTransition = farmPanelTransition + 1
+    if farmPanelTween then
+        farmPanelTween:Cancel()
+        farmPanelTween = nil
+    end
     autoFarmPill.Visible = false
+    local wasVisible = autoFarmPanel.Visible
     autoFarmPanel.Visible = true
-    autoFarmPanel.Size = UDim2.fromScale(0.68, 0.70)
-    autoFarmPanel.BackgroundTransparency = 1
-    tween(autoFarmPanel, CONFIG.AnimTime, {
+    if not wasVisible then
+        autoFarmPanel.Size = UDim2.fromScale(0.68, 0.70)
+        autoFarmPanel.BackgroundTransparency = 1
+    end
+    farmPanelTween = tween(autoFarmPanel, CONFIG.AnimTime, {
         Size = farmPanelSize,
         BackgroundTransparency = CONFIG.Transparency,
-    }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    }, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 end
 hideFarmPanel = function(showPill)
     farmPanelTransition = farmPanelTransition + 1
     local transition = farmPanelTransition
+    if farmPanelTween then
+        farmPanelTween:Cancel()
+        farmPanelTween = nil
+    end
     autoFarmPill.Visible = false
     if not autoFarmPanel.Visible then
         autoFarmPill.Visible = showPill and autoFarmEnabled or false
         return
     end
-    local closing = tween(autoFarmPanel, CONFIG.AnimTime, {
+    farmPanelTween = tween(autoFarmPanel, CONFIG.AnimTime, {
         Size = UDim2.fromScale(0.68, 0.70),
         BackgroundTransparency = 1,
-    }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-    closing.Completed:Connect(function()
+    }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+    farmPanelTween.Completed:Connect(function()
         if transition ~= farmPanelTransition then return end
         autoFarmPanel.Visible = false
         autoFarmPanel.Size = farmPanelSize
         autoFarmPanel.BackgroundTransparency = CONFIG.Transparency
+        farmPanelTween = nil
         autoFarmPill.Visible = showPill and autoFarmEnabled or false
     end)
 end
