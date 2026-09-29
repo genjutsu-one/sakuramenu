@@ -2920,7 +2920,7 @@ ScreenGui.Name = "FuckCMMenu"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior =
-Enum.ZIndexBehavior.Global
+Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
 MainFrame = newFrame({
@@ -4111,14 +4111,14 @@ end
 local rarityBar = newFrame({
     Name = "RarityFilters",
     Position = UDim2.new(0, 12, 0, 38),
-    Size = UDim2.new(1, -24, 0, 22),
+    Size = UDim2.new(0.60, -24, 0, 22),
     BackgroundTransparency = 1,
     ZIndex = 21,
 }, autoFarmPanel)
 local mutationBar = newFrame({
     Name = "MutationFilters",
     Position = UDim2.new(0, 12, 0, 64),
-    Size = UDim2.new(1, -24, 0, 22),
+    Size = UDim2.new(0.60, -24, 0, 22),
     BackgroundTransparency = 1,
     ZIndex = 21,
 }, autoFarmPanel)
@@ -4145,7 +4145,7 @@ newLabel({
 local farmCardScroll = Instance.new("ScrollingFrame")
 farmCardScroll.Name = "UmaCards"
 farmCardScroll.Position = UDim2.new(0, 24, 0, 112)
-farmCardScroll.Size = UDim2.new(0.62, -28, 1, -158)
+farmCardScroll.Size = UDim2.new(0.62, -28, 1, -128)
 farmCardScroll.BackgroundTransparency = 1
 farmCardScroll.BorderSizePixel = 0
 farmCardScroll.ScrollBarThickness = 4
@@ -4167,33 +4167,27 @@ farmGrid.Parent = farmCardScroll
 local farmMutationPane = newFrame({
     Name = "UmaMutations",
     Position = UDim2.new(0.64, 0, 0, 112),
-    Size = UDim2.new(0.34, -12, 1, -158),
+    Size = UDim2.new(0.34, -12, 1, -190),
     BackgroundColor3 = CONFIG.CardColor,
-    BackgroundTransparency = 1,
+    BackgroundTransparency = 0.12,
     ClipsDescendants = true,
     ZIndex = 21,
 }, autoFarmPanel)
 corner(8, farmMutationPane)
 local currentUmaLabel = newLabel({
-    Text = "Select an Uma",
+    Text = "Tap an Uma card",
     Position = UDim2.new(0, 10, 0, 4),
     Size = UDim2.new(1, -20, 0, 23),
-    TextWrapped = true,
+    TextWrapped = false,
     TextXAlignment = Enum.TextXAlignment.Left,
     TextSize = 13,
     Font = Enum.Font.GothamBold,
     ZIndex = 22,
 }, farmMutationPane)
-local configureMutationButton = makeFarmChip(
-    farmMutationPane,
-    "Mutations: Choose",
-    UDim2.new(0, 10, 0, 30),
-    UDim2.new(1, -20, 0, 22)
-)
 local umaMutationGrid = Instance.new("ScrollingFrame")
 umaMutationGrid.Name = "MutationChoices"
-umaMutationGrid.Position = UDim2.new(0, 8, 0, 56)
-umaMutationGrid.Size = UDim2.new(1, -16, 0, 96)
+umaMutationGrid.Position = UDim2.new(0, 8, 0, 34)
+umaMutationGrid.Size = UDim2.new(1, -16, 0, 108)
 umaMutationGrid.Visible = false
 umaMutationGrid.BackgroundColor3 = CONFIG.CardColor
 umaMutationGrid.BackgroundTransparency = 0.03
@@ -4215,7 +4209,7 @@ umaMutationLayout.SortOrder = Enum.SortOrder.LayoutOrder
 umaMutationLayout.Parent = umaMutationGrid
 
 local farmStatus = newLabel({
-    Text = "Choose specific Umas or broad rarity/mutation filters.",
+    Text = "",
     Position = UDim2.new(0, 14, 1, -45),
     Size = UDim2.new(1, -150, 0, 32),
     TextXAlignment = Enum.TextXAlignment.Left,
@@ -4224,6 +4218,7 @@ local farmStatus = newLabel({
     TextColor3 = CONFIG.MutedTextColor,
     ZIndex = 22,
 }, autoFarmPanel)
+farmStatus.Visible = false
 local farmStartButton = newButton({
     Text = "START",
     Position = UDim2.new(1, -122, 1, -46),
@@ -4342,14 +4337,6 @@ for index, mutation in ipairs({ "Any", "Normal", table.unpack(farmMutationData a
     end)
     table.insert(farmMutationButtons, { button = button, mutation = mutation })
 end
-
-configureMutationButton.Visible = false
-configureMutationButton.Activated:Connect(function()
-    if selectedUmaName then
-        umaMutationGrid.Visible = not umaMutationGrid.Visible
-        if autoFarmRefresh then autoFarmRefresh() end
-    end
-end)
 
 local function addFarmCard(name, data, order)
     local card = newFrame({
@@ -4543,35 +4530,26 @@ local function updateFarmFilterColors()
                         end
                     end
                 end
-                child.BackgroundColor3 = chosen and Color3.fromRGB(255, 76, 145) or CONFIG.CardColor
+                child.BackgroundColor3 = not available and Color3.fromRGB(135, 16, 30)
+                    or (chosen and Color3.fromRGB(255, 76, 145) or CONFIG.CardColor)
+                child.BackgroundTransparency = 0
                 local chipText = child:FindFirstChild("ChipText")
                 local chipStroke = child:FindFirstChildOfClass("UIStroke")
                 if chipText then
-                    if not available then
-                        chipText.TextColor3 = Color3.fromRGB(255, 45, 58)
-                        chipText.TextStrokeColor3 = Color3.fromRGB(255, 20, 35)
-                        chipText.TextStrokeTransparency = 0.08
-                        local textOutline = chipText:FindFirstChildOfClass("UIStroke")
-                        if textOutline then
-                            textOutline.Color = Color3.fromRGB(255, 15, 32)
-                            textOutline.Transparency = 0.05
-                        end
-                    else
-                        local mutInfo = farmMutationData and farmMutationData.Index
-                            and farmMutationData.Index[value]
-                        local rarityInfo = farmRarityData and farmRarityData.Index
-                            and farmRarityData.Index[value]
-                        chipText.TextColor3 = mutInfo and mutInfo.Color
-                            or (rarityInfo and Color3.new(1, 1, 1) or CONFIG.MutedTextColor)
-                        chipText.TextStrokeTransparency = 1
-                        local textOutline = chipText:FindFirstChildOfClass("UIStroke")
-                        if textOutline then
-                            textOutline.Color = Color3.new(0, 0, 0)
-                            textOutline.Transparency = 0.7
-                        end
+                    local mutInfo = farmMutationData and farmMutationData.Index
+                        and farmMutationData.Index[value]
+                    local rarityInfo = farmRarityData and farmRarityData.Index
+                        and farmRarityData.Index[value]
+                    chipText.TextColor3 = mutInfo and mutInfo.Color
+                        or (rarityInfo and Color3.new(1, 1, 1) or CONFIG.MutedTextColor)
+                    chipText.TextStrokeTransparency = 1
+                    local textOutline = chipText:FindFirstChildOfClass("UIStroke")
+                    if textOutline then
+                        textOutline.Color = Color3.new(0, 0, 0)
+                        textOutline.Transparency = 0.7
                     end
                     for _, gradient in ipairs(chipText:GetChildren()) do
-                        if gradient:IsA("UIGradient") then gradient.Enabled = available end
+                        if gradient:IsA("UIGradient") then gradient.Enabled = true end
                     end
                 end
                 if chipStroke then
@@ -4608,34 +4586,29 @@ autoFarmRefresh = function()
         record.lockLabel.TextStrokeColor3 = Color3.fromRGB(255, 0, 25)
         record.lockLabel.TextStrokeTransparency = 0.12
     end
-    local selection = selectedUmaName and autoFarmTargets[selectedUmaName]
-    currentUmaLabel.Text = selectedUmaName
-        and ((autoFarmTargets[selectedUmaName] and "✓ " or "") .. selectedUmaName)
-        or "Select an Uma"
-    currentUmaLabel.Text = selectedUmaName or "Tap an Uma card"
-    configureMutationButton.Visible = selection ~= nil
-    local configureText = configureMutationButton:FindFirstChild("ChipText")
-    if configureText then
-        configureText.Text = umaMutationGrid.Visible and "Mutations: Hide" or "Mutations: Choose"
-        configureText.TextColor3 = CONFIG.TextColor
-    end
+    local selectedCount = 0
+    for _ in pairs(autoFarmTargets) do selectedCount = selectedCount + 1 end
+    currentUmaLabel.Text = selectedCount == 0 and "Tap an Uma card"
+        or (selectedCount == 1 and (selectedUmaName or "1 Uma selected")
+            or (tostring(selectedCount) .. " Umas selected - shared mutations"))
+    umaMutationGrid.Visible = selectedCount > 0
     for _, entry in ipairs(farmMutationButtons) do
         local chosen = entry.mutation == "Any"
-            and selection ~= nil and next(selection) == nil
-            or selection ~= nil and selection[entry.mutation] == true
+            and selectedCount > 0 and next(autoFarmSelectedMutations) == nil
+            or selectedCount > 0 and autoFarmSelectedMutations[entry.mutation] == true
         entry.button.BackgroundColor3 = chosen
             and Color3.fromRGB(255, 76, 145) or CONFIG.CardColor
         local chipText = entry.button:FindFirstChild("ChipText")
         if chipText then
             local mutationColor = farmMutationData and farmMutationData.Index
                 and farmMutationData.Index[entry.mutation] and farmMutationData.Index[entry.mutation].Color
-            chipText.TextColor3 = selection
+            chipText.TextColor3 = selectedCount > 0
                 and (mutationColor or CONFIG.MutedTextColor)
                 or Color3.fromRGB(115, 115, 120)
-            chipText.TextTransparency = selection and 0 or 0.2
+            chipText.TextTransparency = selectedCount > 0 and 0 or 0.2
         end
-        entry.button.Active = selection ~= nil
-        entry.button.AutoButtonColor = selection ~= nil
+        entry.button.Active = selectedCount > 0
+        entry.button.AutoButtonColor = selectedCount > 0
     end
     local targetCount = 0
     for _ in pairs(autoFarmTargets) do targetCount = targetCount + 1 end
@@ -4805,31 +4778,21 @@ CONFIG.AccentColor,
 )
 
 collapseMainForFarm = function()
-    if not MainFrame or autoFarmMainCollapsed then return end
+    if not MainFrame then return end
     autoFarmMainCollapsed = true
-    local animation = tween(MainFrame, CONFIG.AnimTime, {
-        Size = UDim2.fromScale(0, 0),
-        BackgroundTransparency = 1,
-    }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
-    animation.Completed:Connect(function()
-        if autoFarmMainCollapsed then
-            MainFrame.Visible = false
-            FloatBtn.Visible = true
-        end
-    end)
+    MainFrame.Visible = false
+    MainFrame.Size = UDim2.fromScale(0, 0)
+    MainFrame.BackgroundTransparency = 1
+    if FloatBtn then FloatBtn.Visible = true end
 end
 
 restoreMainAfterFarm = function()
-    if not MainFrame or not autoFarmMainCollapsed then return end
+    if not MainFrame then return end
     autoFarmMainCollapsed = false
-    FloatBtn.Visible = false
+    if FloatBtn then FloatBtn.Visible = false end
     MainFrame.Visible = true
-    MainFrame.Size = UDim2.fromScale(0, 0)
-    MainFrame.BackgroundTransparency = 1
-    tween(MainFrame, CONFIG.AnimTime, {
-        Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale),
-        BackgroundTransparency = CONFIG.Transparency,
-    }, Enum.EasingStyle.Back)
+    MainFrame.Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale)
+    MainFrame.BackgroundTransparency = CONFIG.Transparency
 end
 
 local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
