@@ -4212,6 +4212,22 @@ local farmMutationPane = newFrame({
     ZIndex = 21,
 }, autoFarmPanel)
 corner(8, farmMutationPane)
+newFrame({
+    Name = "MutationPaneTopEdge",
+    Position = UDim2.new(0, 8, 0, 1),
+    Size = UDim2.new(1, -16, 0, 1),
+    BackgroundColor3 = CONFIG.MutedTextColor,
+    BackgroundTransparency = 0.2,
+    ZIndex = 26,
+}, farmMutationPane)
+newFrame({
+    Name = "MutationPaneBottomEdge",
+    Position = UDim2.new(0, 8, 1, -2),
+    Size = UDim2.new(1, -16, 0, 1),
+    BackgroundColor3 = CONFIG.MutedTextColor,
+    BackgroundTransparency = 0.2,
+    ZIndex = 26,
+}, farmMutationPane)
 local umaMutationGrid = Instance.new("ScrollingFrame")
 umaMutationGrid.Name = "MutationChoices"
 umaMutationGrid.Position = UDim2.new(0, 6, 0, 6)
@@ -4277,25 +4293,27 @@ local function buildFarmFilterRow(parent, values, stateMap, yOffset)
     layout.Parent = scroll
     for _, value in ipairs(values) do
         local chip = makeFarmChip(scroll, value, UDim2.new(), UDim2.fromOffset(58, 20))
+        local fullOutline = chip:FindFirstChild("FarmChipStroke")
+        if fullOutline then fullOutline:Destroy() end
         local chipText = chip:FindFirstChild("ChipText")
         if chipText then chipText.TextSize = 9 end
         chip.LayoutOrder = #scroll:GetChildren()
         local sideColor = Instance.new("Frame")
         sideColor.Name = "FarmSideLeft"
-        sideColor.Position = UDim2.new(0, 2, 0, 4)
-        sideColor.Size = UDim2.new(0, 1, 1, -8)
-        sideColor.BackgroundColor3 = CONFIG.AccentColor
-        sideColor.BackgroundTransparency = 0.55
+        sideColor.Position = UDim2.new(0, 2, 0, 3)
+        sideColor.Size = UDim2.new(0, 2, 1, -6)
+        sideColor.BackgroundColor3 = Color3.fromRGB(90, 90, 102)
+        sideColor.BackgroundTransparency = 0.2
         sideColor.BorderSizePixel = 0
         sideColor.Active = false
         sideColor.ZIndex = 24
         sideColor.Parent = chip
         local sideRight = Instance.new("Frame")
         sideRight.Name = "FarmSideRight"
-        sideRight.Position = UDim2.new(1, -3, 0, 4)
-        sideRight.Size = UDim2.new(0, 1, 1, -8)
-        sideRight.BackgroundColor3 = CONFIG.AccentColor
-        sideRight.BackgroundTransparency = 0.55
+        sideRight.Position = UDim2.new(1, -4, 0, 3)
+        sideRight.Size = UDim2.new(0, 2, 1, -6)
+        sideRight.BackgroundColor3 = Color3.fromRGB(90, 90, 102)
+        sideRight.BackgroundTransparency = 0.2
         sideRight.BorderSizePixel = 0
         sideRight.Active = false
         sideRight.ZIndex = 24
@@ -4600,7 +4618,7 @@ local function updateFarmFilterColors()
                     local edge = child:FindFirstChild(edgeName)
                     if edge then
                         edge.BackgroundColor3 = sideColor
-                        edge.BackgroundTransparency = chosen and available and 0 or 0.55
+                        edge.BackgroundTransparency = chosen and available and 0 or 0.2
                     end
                 end
                 child.Active = available
