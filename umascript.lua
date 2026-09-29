@@ -4137,6 +4137,19 @@ local function makeFarmChip(parent, text, position, size)
     corner(8, button)
     local buttonStroke = stroke(button, mutationColor or CONFIG.AccentColor, 0.88, 1)
     buttonStroke.Name = "FarmChipStroke"
+    local selectionOutline = newFrame({
+        Name = "FarmSelectionOutline",
+        Size = UDim2.fromScale(1, 1),
+        Position = UDim2.fromScale(0, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 2,
+        BorderColor3 = Color3.new(1, 1, 1),
+        Visible = false,
+        Active = false,
+        Selectable = false,
+        ZIndex = button.ZIndex + 2,
+    }, button)
+    corner(8, selectionOutline)
     local textLabel = newLabel({
         Name = "ChipText", Text = text,
         Position = UDim2.fromOffset(3, 2), Size = UDim2.new(1, -6, 1, -4),
@@ -4568,6 +4581,8 @@ local function updateFarmFilterColors()
                 tween(child, 0.16, { BackgroundColor3 = targetBackground })
                 child.BackgroundTransparency = 0
                 local chipStroke = child:FindFirstChild("FarmChipStroke")
+                local selectionOutline = child:FindFirstChild("FarmSelectionOutline")
+                if selectionOutline then selectionOutline.Visible = chosen == true and available end
                 if chipStroke then
                     chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
                         or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
@@ -4611,6 +4626,8 @@ autoFarmRefresh = function()
             or selectedCount > 0 and autoFarmSelectedMutations[entry.mutation] == true
         tween(entry.button, 0.16, { BackgroundColor3 = CONFIG.CardColor })
         local mutationStroke = entry.button:FindFirstChild("FarmChipStroke")
+        local selectionOutline = entry.button:FindFirstChild("FarmSelectionOutline")
+        if selectionOutline then selectionOutline.Visible = chosen end
         if mutationStroke then
             mutationStroke.Color = chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor
             mutationStroke.Transparency = chosen and 0 or 0.88
