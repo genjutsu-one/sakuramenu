@@ -2736,6 +2736,7 @@ local autoFarmPanel
 local autoFarmPill
 local MainFrame, FloatBtn
 local autoFarmMainCollapsed = false
+local mainWindowTransition = 0
 local collapseMainForFarm, restoreMainAfterFarm
 local autoFarmStarted = false
 local autoFarmEnabled = false
@@ -2747,14 +2748,22 @@ local autoFarmMutations = {}
 local autoFarmRefresh
 local autoFarmStart
 local autoFarmStop
+local showFarmPanel, hideFarmPanel
 local AutoFarmHandlers = {
     onToggle = function(state)
         autoFarmEnabled = state
         autoFarmStarted = false
         autoFarmToken = autoFarmToken + 1
         if not state and autoFarmStop then autoFarmStop() end
-        if autoFarmPanel then autoFarmPanel.Visible = state end
-        if autoFarmPill then autoFarmPill.Visible = false end
+        if state then
+            if showFarmPanel then showFarmPanel() elseif autoFarmPanel then autoFarmPanel.Visible = true end
+            if autoFarmPill then autoFarmPill.Visible = false end
+        elseif hideFarmPanel then
+            hideFarmPanel(false)
+        elseif autoFarmPanel then
+            autoFarmPanel.Visible = false
+        end
+        if not state and autoFarmPill then autoFarmPill.Visible = false end
         if state and collapseMainForFarm then collapseMainForFarm() end
         if not state and restoreMainAfterFarm then restoreMainAfterFarm() end
         if autoFarmRefresh then autoFarmRefresh() end
@@ -4002,44 +4011,23 @@ end
 
 local collapseFarmPanel = function()
     if not autoFarmEnabled then return end
-    autoFarmPanel.Visible = false
-    autoFarmPill.Visible = true
+    if hideFarmPanel then hideFarmPanel(true) end
     if restoreMainAfterFarm then restoreMainAfterFarm() end
 end
 local minimizeFarm = newButton({
-    Text = "−", Position = UDim2.new(1, -66, 0, 7), Size = UDim2.fromOffset(26, 26),
-    BackgroundColor3 = CONFIG.CardColor, TextColor3 = CONFIG.TextColor,
-    Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = Color3.new(1, 1, 1),
-    BackgroundTransparency = 0.08, ZIndex = 60,
+    Name = "MinimizeBtn",
+    Position = UDim2.new(1, -54, 0, 10), Size = UDim2.fromOffset(30, 30),
+    AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = CONFIG.CardColor,
+    ZIndex = 50,
 }, autoFarmPanel)
-corner(14, minimizeFarm)
-minimizeFarm.Text = ""
-minimizeFarm.Position = UDim2.new(1, -54, 0, 10)
-minimizeFarm.AnchorPoint = Vector2.new(1, 0)
-minimizeFarm.Size = UDim2.fromOffset(30, 30)
-minimizeFarm.BackgroundTransparency = 0
-minimizeFarm.ZIndex = 50
-for _, child in ipairs(minimizeFarm:GetChildren()) do
-    if child:IsA("UICorner") then child:Destroy() end
-end
 corner(8, minimizeFarm)
 drawCross(minimizeFarm, 12, CONFIG.AccentColor, 0, nil)
 local closeFarm = newButton({
-    Text = "×", Position = UDim2.new(1, -34, 0, 7), Size = UDim2.fromOffset(26, 26),
-    BackgroundColor3 = CONFIG.CardColor, TextColor3 = CONFIG.TextColor,
-    Font = Enum.Font.GothamBold, TextSize = 18, TextColor3 = Color3.new(1, 1, 1),
-    BackgroundTransparency = 0.08, ZIndex = 60,
+    Name = "CloseBtn",
+    Position = UDim2.new(1, -16, 0, 10), Size = UDim2.fromOffset(30, 30),
+    AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = CONFIG.CardColor,
+    ZIndex = 50,
 }, autoFarmPanel)
-corner(14, closeFarm)
-closeFarm.Text = ""
-closeFarm.Position = UDim2.new(1, -16, 0, 10)
-closeFarm.AnchorPoint = Vector2.new(1, 0)
-closeFarm.Size = UDim2.fromOffset(30, 30)
-closeFarm.BackgroundTransparency = 0
-closeFarm.ZIndex = 50
-for _, child in ipairs(closeFarm:GetChildren()) do
-    if child:IsA("UICorner") then child:Destroy() end
-end
 corner(8, closeFarm)
 drawCross(closeFarm, 12, CONFIG.CloseColor, 45, -45)
 for _, button in ipairs({ minimizeFarm, closeFarm }) do
@@ -4052,9 +4040,9 @@ local function closeFarmMenu()
         setToggleState(autoFarmToggleTrack, false, true)
     elseif autoFarmEnabled then
         AutoFarmHandlers.onToggle(false)
+    elseif hideFarmPanel then
+        hideFarmPanel(false)
     end
-    autoFarmPanel.Visible = false
-    autoFarmPill.Visible = false
 end
 minimizeFarm.Activated:Connect(collapseFarmPanel)
 closeFarm.Activated:Connect(closeFarmMenu)
@@ -4070,10 +4058,43 @@ autoFarmPill = newButton({
 corner(19, autoFarmPill)
 stroke(autoFarmPill, CONFIG.AccentColor, 0.35, 1)
 makeFarmDraggable(autoFarmPill, autoFarmPill, function()
-    autoFarmPill.Visible = false
-    autoFarmPanel.Visible = autoFarmEnabled
+    if showFarmPanel then showFarmPanel() end
     if autoFarmEnabled and collapseMainForFarm then collapseMainForFarm() end
 end)
+
+local farmPanelTransition = 0
+local farmPanelSize = UDim2.fromScale(0.72, 0.76)
+showFarmPanel = function()
+    farmPanelTransition = farmPanelTransition + 1
+    autoFarmPill.Visible = false
+    autoFarmPanel.Visible = true
+    autoFarmPanel.Size = UDim2.fromScale(0.68, 0.70)
+    autoFarmPanel.BackgroundTransparency = 1
+    tween(autoFarmPanel, CONFIG.AnimTime, {
+        Size = farmPanelSize,
+        BackgroundTransparency = CONFIG.Transparency,
+    }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+end
+hideFarmPanel = function(showPill)
+    farmPanelTransition = farmPanelTransition + 1
+    local transition = farmPanelTransition
+    autoFarmPill.Visible = false
+    if not autoFarmPanel.Visible then
+        autoFarmPill.Visible = showPill and autoFarmEnabled or false
+        return
+    end
+    local closing = tween(autoFarmPanel, CONFIG.AnimTime, {
+        Size = UDim2.fromScale(0.68, 0.70),
+        BackgroundTransparency = 1,
+    }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    closing.Completed:Connect(function()
+        if transition ~= farmPanelTransition then return end
+        autoFarmPanel.Visible = false
+        autoFarmPanel.Size = farmPanelSize
+        autoFarmPanel.BackgroundTransparency = CONFIG.Transparency
+        autoFarmPill.Visible = showPill and autoFarmEnabled or false
+    end)
+end
 
 local function makeFarmChip(parent, text, position, size)
     local mutationStyle = farmMutationData and farmMutationData.Index and farmMutationData.Index[text]
@@ -4132,16 +4153,6 @@ newLabel({
     TextColor3 = CONFIG.MutedTextColor,
     ZIndex = 21,
 }, autoFarmPanel)
-newLabel({
-    Text = "Mutations",
-    Position = UDim2.new(0.64, 0, 0, 91),
-    Size = UDim2.new(0.34, -12, 0, 22),
-    TextXAlignment = Enum.TextXAlignment.Left,
-    TextSize = 12,
-    TextColor3 = CONFIG.MutedTextColor,
-    ZIndex = 21,
-}, autoFarmPanel)
-
 local farmCardScroll = Instance.new("ScrollingFrame")
 farmCardScroll.Name = "UmaCards"
 farmCardScroll.Position = UDim2.new(0, 24, 0, 112)
@@ -4166,29 +4177,20 @@ farmGrid.Parent = farmCardScroll
 
 local farmMutationPane = newFrame({
     Name = "UmaMutations",
-    Position = UDim2.new(0.64, 0, 0, 112),
-    Size = UDim2.new(0.34, -12, 1, -190),
+    Position = UDim2.new(0.64, 0, 0, 38),
+    Size = UDim2.new(0.34, -12, 1, -96),
     BackgroundColor3 = CONFIG.CardColor,
     BackgroundTransparency = 0.12,
     ClipsDescendants = true,
+    Visible = false,
     ZIndex = 21,
 }, autoFarmPanel)
 corner(8, farmMutationPane)
-local currentUmaLabel = newLabel({
-    Text = "Tap an Uma card",
-    Position = UDim2.new(0, 10, 0, 4),
-    Size = UDim2.new(1, -20, 0, 23),
-    TextWrapped = false,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    TextSize = 13,
-    Font = Enum.Font.GothamBold,
-    ZIndex = 22,
-}, farmMutationPane)
 local umaMutationGrid = Instance.new("ScrollingFrame")
 umaMutationGrid.Name = "MutationChoices"
-umaMutationGrid.Position = UDim2.new(0, 8, 0, 34)
-umaMutationGrid.Size = UDim2.new(1, -16, 0, 108)
-umaMutationGrid.Visible = false
+umaMutationGrid.Position = UDim2.new(0, 8, 0, 8)
+umaMutationGrid.Size = UDim2.new(1, -16, 1, -16)
+umaMutationGrid.Visible = true
 umaMutationGrid.BackgroundColor3 = CONFIG.CardColor
 umaMutationGrid.BackgroundTransparency = 0.03
 umaMutationGrid.BorderSizePixel = 0
@@ -4530,8 +4532,9 @@ local function updateFarmFilterColors()
                         end
                     end
                 end
-                child.BackgroundColor3 = not available and Color3.fromRGB(135, 16, 30)
-                    or (chosen and Color3.fromRGB(255, 76, 145) or CONFIG.CardColor)
+                local targetBackground = not available
+                    and Color3.fromRGB(135, 16, 30) or CONFIG.CardColor
+                tween(child, 0.16, { BackgroundColor3 = targetBackground })
                 child.BackgroundTransparency = 0
                 local chipText = child:FindFirstChild("ChipText")
                 local chipStroke = child:FindFirstChildOfClass("UIStroke")
@@ -4553,10 +4556,12 @@ local function updateFarmFilterColors()
                     end
                 end
                 if chipStroke then
-                    chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
-                        or CONFIG.AccentColor
-                    chipStroke.Transparency = not available and 0.05 or 0.88
-                    chipStroke.Thickness = not available and 1.5 or 1
+                    tween(chipStroke, 0.16, {
+                        Color = not available and Color3.fromRGB(255, 28, 45)
+                            or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor),
+                        Transparency = not available and 0.05 or (chosen and 0.05 or 0.88),
+                        Thickness = not available and 1.5 or (chosen and 1.5 or 1),
+                    })
                 end
                 child.Active = available
                 child.AutoButtonColor = available
@@ -4588,16 +4593,20 @@ autoFarmRefresh = function()
     end
     local selectedCount = 0
     for _ in pairs(autoFarmTargets) do selectedCount = selectedCount + 1 end
-    currentUmaLabel.Text = selectedCount == 0 and "Tap an Uma card"
-        or (selectedCount == 1 and (selectedUmaName or "1 Uma selected")
-            or (tostring(selectedCount) .. " Umas selected - shared mutations"))
-    umaMutationGrid.Visible = selectedCount > 0
+    farmMutationPane.Visible = selectedCount > 0
     for _, entry in ipairs(farmMutationButtons) do
         local chosen = entry.mutation == "Any"
             and selectedCount > 0 and next(autoFarmSelectedMutations) == nil
             or selectedCount > 0 and autoFarmSelectedMutations[entry.mutation] == true
-        entry.button.BackgroundColor3 = chosen
-            and Color3.fromRGB(255, 76, 145) or CONFIG.CardColor
+        tween(entry.button, 0.16, { BackgroundColor3 = CONFIG.CardColor })
+        local mutationStroke = entry.button:FindFirstChildOfClass("UIStroke")
+        if mutationStroke then
+            tween(mutationStroke, 0.16, {
+                Color = chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor,
+                Transparency = chosen and 0.05 or 0.88,
+                Thickness = chosen and 1.5 or 1,
+            })
+        end
         local chipText = entry.button:FindFirstChild("ChipText")
         if chipText then
             local mutationColor = farmMutationData and farmMutationData.Index
@@ -4779,20 +4788,44 @@ CONFIG.AccentColor,
 
 collapseMainForFarm = function()
     if not MainFrame then return end
+    mainWindowTransition = mainWindowTransition + 1
+    local transition = mainWindowTransition
     autoFarmMainCollapsed = true
-    MainFrame.Visible = false
-    MainFrame.Size = UDim2.fromScale(0, 0)
-    MainFrame.BackgroundTransparency = 1
-    if FloatBtn then FloatBtn.Visible = true end
+    if not MainFrame.Visible then
+        MainFrame.Size = UDim2.fromScale(0, 0)
+        MainFrame.BackgroundTransparency = 1
+        if FloatBtn then FloatBtn.Visible = true end
+        return
+    end
+    local closing = tween(MainFrame, CONFIG.AnimTime, {
+        Size = UDim2.fromScale(0, 0),
+        BackgroundTransparency = 1,
+    }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+    closing.Completed:Connect(function()
+        if transition ~= mainWindowTransition or not autoFarmMainCollapsed then return end
+        MainFrame.Visible = false
+        if FloatBtn then FloatBtn.Visible = true end
+    end)
 end
 
 restoreMainAfterFarm = function()
     if not MainFrame then return end
+    local wasCollapsed = autoFarmMainCollapsed
+    mainWindowTransition = mainWindowTransition + 1
     autoFarmMainCollapsed = false
     if FloatBtn then FloatBtn.Visible = false end
     MainFrame.Visible = true
-    MainFrame.Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale)
-    MainFrame.BackgroundTransparency = CONFIG.Transparency
+    if wasCollapsed then
+        MainFrame.Size = UDim2.fromScale(0, 0)
+        MainFrame.BackgroundTransparency = 1
+        tween(MainFrame, CONFIG.AnimTime, {
+            Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale),
+            BackgroundTransparency = CONFIG.Transparency,
+        }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    else
+        MainFrame.Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale)
+        MainFrame.BackgroundTransparency = CONFIG.Transparency
+    end
 end
 
 local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
@@ -4950,7 +4983,7 @@ local t =
             MainFrame.Visible = false  
             FloatBtn.Visible = true
             if autoFarmPanel then autoFarmPanel.Visible = false end
-            if autoFarmPill then autoFarmPill.Visible = false end
+            if autoFarmPill then autoFarmPill.Visible = autoFarmEnabled end
         end  
     )  
 end
