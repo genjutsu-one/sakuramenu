@@ -4138,6 +4138,19 @@ local function makeFarmChip(parent, text, position, size)
     local buttonStroke = stroke(button, mutationColor or CONFIG.AccentColor, 0.88, 1)
     buttonStroke.Name = "FarmChipStroke"
     buttonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    local selectionOutline = newFrame({
+        Name = "FarmSelectionOutline",
+        Position = UDim2.fromOffset(3, 3),
+        Size = UDim2.new(1, -6, 1, -6),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 1,
+        BorderColor3 = Color3.new(1, 1, 1),
+        Visible = false,
+        Active = false,
+        Selectable = false,
+        ZIndex = 24,
+    }, button)
+    corner(6, selectionOutline)
     local textLabel = newLabel({
         Name = "ChipText", Text = text,
         Position = UDim2.fromOffset(3, 2), Size = UDim2.new(1, -6, 1, -4),
@@ -4207,7 +4220,7 @@ local farmMutationPane = newFrame({
     Size = UDim2.new(0.37, -12, 1, -96),
     BackgroundColor3 = CONFIG.CardColor,
     BackgroundTransparency = 0.12,
-    ClipsDescendants = false,
+    ClipsDescendants = true,
     Visible = false,
     ZIndex = 21,
 }, autoFarmPanel)
@@ -4222,11 +4235,11 @@ umaMutationGrid.BackgroundTransparency = 0.03
 umaMutationGrid.BorderSizePixel = 0
 umaMutationGrid.ScrollBarThickness = 4
 umaMutationGrid.ScrollingDirection = Enum.ScrollingDirection.Y
-umaMutationGrid.ClipsDescendants = false
+umaMutationGrid.ClipsDescendants = true
 umaMutationGrid.ScrollBarImageColor3 = CONFIG.AccentColor
 umaMutationGrid.AutomaticCanvasSize = Enum.AutomaticSize.Y
 umaMutationGrid.CanvasSize = UDim2.new()
-umaMutationGrid.ZIndex = 24
+umaMutationGrid.ZIndex = 22
 umaMutationGrid.Parent = farmMutationPane
 corner(8, umaMutationGrid)
 local umaMutationLayout = Instance.new("UIGridLayout")
@@ -4347,9 +4360,6 @@ for index, mutation in ipairs({ "Any", "Normal", table.unpack(farmMutationData a
         UDim2.new(),
         UDim2.new(0.32, -4, 0, 32)
     )
-    button.ZIndex = 25
-    local chipText = button:FindFirstChild("ChipText")
-    if chipText then chipText.ZIndex = 26 end
     button.LayoutOrder = index
     button.Activated:Connect(function()
         if not selectedUmaName or not autoFarmTargets[selectedUmaName] then return end
@@ -4571,6 +4581,10 @@ local function updateFarmFilterColors()
                 tween(child, 0.16, { BackgroundColor3 = targetBackground })
                 child.BackgroundTransparency = 0
                 local chipStroke = child:FindFirstChild("FarmChipStroke")
+                local selectionOutline = child:FindFirstChild("FarmSelectionOutline")
+                if selectionOutline then
+                    selectionOutline.Visible = chosen == true and available
+                end
                 if chipStroke then
                     chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
                         or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
@@ -4614,6 +4628,8 @@ autoFarmRefresh = function()
             or selectedCount > 0 and autoFarmSelectedMutations[entry.mutation] == true
         tween(entry.button, 0.16, { BackgroundColor3 = CONFIG.CardColor })
         local mutationStroke = entry.button:FindFirstChild("FarmChipStroke")
+        local selectionOutline = entry.button:FindFirstChild("FarmSelectionOutline")
+        if selectionOutline then selectionOutline.Visible = chosen end
         if mutationStroke then
             mutationStroke.Color = chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor
             mutationStroke.Transparency = chosen and 0 or 0.88
