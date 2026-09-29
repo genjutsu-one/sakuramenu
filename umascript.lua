@@ -1608,6 +1608,7 @@ local function teleportToKick()
 end
 
 local autoFarmPrepareKick
+local autoFarmOnKickTeleport
 
 local KickHandlers
 do
@@ -1724,7 +1725,9 @@ do
                 local timedOut = os.clock() - startedAt > 45
                 if not returnedToZone and (released or timedOut) then
                     task.wait(0.4)
-                    teleportToKick()
+                    if teleportToKick() and autoFarmOnKickTeleport then
+                        pcall(autoFarmOnKickTeleport)
+                    end
                     returnedToZone = true
                 end
             end
@@ -1742,7 +1745,9 @@ do
             if busy() then
                 waitKickCycle(id)
             elseif not nearKickZone() then
-                teleportToKick()
+                if teleportToKick() and autoFarmOnKickTeleport then
+                    pcall(autoFarmOnKickTeleport)
+                end
                 waitFor(id, function()
                     return nearKickZone() and ready()
                 end, 5)
@@ -2453,10 +2458,6 @@ local function teleportToWeightShop()
     end
 
     root.CFrame = touchPart.CFrame + Vector3.new(0, 3, 0)
-    task.wait(0.25)
-    local frames = PlayerGui:FindFirstChild("Frames")
-    local weightUi = frames and frames:FindFirstChild("WeightUI")
-    if weightUi then weightUi.Visible = true end
     return true
 end
 
@@ -4018,7 +4019,7 @@ local minimizeFarm = newButton({
     Name = "MinimizeBtn",
     Position = UDim2.new(1, -54, 0, 10), Size = UDim2.fromOffset(30, 30),
     AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = CONFIG.CardColor,
-    ZIndex = 50,
+    BorderSizePixel = 0, ZIndex = 50,
 }, autoFarmPanel)
 corner(8, minimizeFarm)
 drawCross(minimizeFarm, 12, CONFIG.AccentColor, 0, nil)
@@ -4026,7 +4027,7 @@ local closeFarm = newButton({
     Name = "CloseBtn",
     Position = UDim2.new(1, -16, 0, 10), Size = UDim2.fromOffset(30, 30),
     AnchorPoint = Vector2.new(1, 0), BackgroundColor3 = CONFIG.CardColor,
-    ZIndex = 50,
+    BorderSizePixel = 0, ZIndex = 50,
 }, autoFarmPanel)
 corner(8, closeFarm)
 drawCross(closeFarm, 12, CONFIG.CloseColor, 45, -45)
@@ -4106,13 +4107,15 @@ local function makeFarmChip(parent, text, position, size)
         Size = size,
         BackgroundColor3 = CONFIG.CardColor,
         BackgroundTransparency = 0,
+        BorderSizePixel = 0,
         TextColor3 = mutationColor or CONFIG.MutedTextColor,
         Font = Enum.Font.GothamBold,
         TextSize = 11,
         ZIndex = 22,
     }, parent)
     corner(8, button)
-    stroke(button, mutationColor or CONFIG.AccentColor, 0.88, 1)
+    local buttonStroke = stroke(button, mutationColor or CONFIG.AccentColor, 0.88, 1)
+    buttonStroke.Name = "FarmChipStroke"
     local textLabel = newLabel({
         Name = "ChipText", Text = text, Size = UDim2.fromScale(1, 1),
         BackgroundTransparency = 1, TextColor3 = mutationColor or CONFIG.MutedTextColor,
@@ -4492,7 +4495,9 @@ local function isFarmTargetTool(tool)
     local data = farmEntities.Brainrots[tool.Name]
     local actual = farmMutationData.GetMutationsFromInstance(tool)
     local specific = autoFarmTargets[tool.Name]
-    if specific and selectedMutationMatch(specific, actual) then return true end
+    if specific then
+        return selectedMutationMatch(specific, actual)
+    end
     if autoFarmRarities[data.Rarity] and farmPoolNames[data.Rarity]
         and farmPoolNames[data.Rarity][tool.Name]
         and selectedMutationMatch(autoFarmMutations, actual) then
@@ -4537,7 +4542,7 @@ local function updateFarmFilterColors()
                 tween(child, 0.16, { BackgroundColor3 = targetBackground })
                 child.BackgroundTransparency = 0
                 local chipText = child:FindFirstChild("ChipText")
-                local chipStroke = child:FindFirstChildOfClass("UIStroke")
+                local chipStroke = child:FindFirstChild("FarmChipStroke")
                 if chipText then
                     local mutInfo = farmMutationData and farmMutationData.Index
                         and farmMutationData.Index[value]
@@ -4556,12 +4561,10 @@ local function updateFarmFilterColors()
                     end
                 end
                 if chipStroke then
-                    tween(chipStroke, 0.16, {
-                        Color = not available and Color3.fromRGB(255, 28, 45)
-                            or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor),
-                        Transparency = not available and 0.05 or (chosen and 0.05 or 0.88),
-                        Thickness = not available and 1.5 or (chosen and 1.5 or 1),
-                    })
+                    chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
+                        or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
+                    chipStroke.Transparency = not available and 0.02 or (chosen and 0 or 0.88)
+                    chipStroke.Thickness = not available and 1.5 or (chosen and 2.5 or 1)
                 end
                 child.Active = available
                 child.AutoButtonColor = available
@@ -4599,13 +4602,11 @@ autoFarmRefresh = function()
             and selectedCount > 0 and next(autoFarmSelectedMutations) == nil
             or selectedCount > 0 and autoFarmSelectedMutations[entry.mutation] == true
         tween(entry.button, 0.16, { BackgroundColor3 = CONFIG.CardColor })
-        local mutationStroke = entry.button:FindFirstChildOfClass("UIStroke")
+        local mutationStroke = entry.button:FindFirstChild("FarmChipStroke")
         if mutationStroke then
-            tween(mutationStroke, 0.16, {
-                Color = chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor,
-                Transparency = chosen and 0.05 or 0.88,
-                Thickness = chosen and 1.5 or 1,
-            })
+            mutationStroke.Color = chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor
+            mutationStroke.Transparency = chosen and 0 or 0.88
+            mutationStroke.Thickness = chosen and 2.5 or 1
         end
         local chipText = entry.button:FindFirstChild("ChipText")
         if chipText then
@@ -4649,6 +4650,82 @@ autoFarmStart = function()
     autoFarmToken = autoFarmToken + 1
     local id = autoFarmToken
     local nextPlanIndex = 0
+    local kickTeleportCount = 0
+    local function farmIsRunning()
+        return autoFarmEnabled and autoFarmStarted and autoFarmToken == id
+    end
+    local function sellUnwantedTool(tool, humanoid, backpack, sellRemote)
+        local lp = Players.LocalPlayer
+        if not farmIsRunning() or not isUmaTool(tool) or isFarmTargetTool(tool) then return end
+        if lp:GetAttribute("LocalKickBusy") == true or lp:GetAttribute("IsKicking") == true then return end
+
+        local character = lp.Character
+        if not character or (tool.Parent ~= character and tool.Parent ~= backpack) then return end
+        if tool.Parent ~= character or character:FindFirstChildOfClass("Tool") ~= tool then
+            pcall(function() humanoid:EquipTool(tool) end)
+        end
+
+        local deadline = os.clock() + 1.25
+        while farmIsRunning() and os.clock() < deadline do
+            character = lp.Character
+            if not character or not tool.Parent then return end
+            if tool.Parent == character and character:FindFirstChildOfClass("Tool") == tool then break end
+            if tool.Parent ~= backpack then return end
+            task.wait(0.05)
+        end
+        if not farmIsRunning() or not character or tool.Parent ~= character
+            or character:FindFirstChildOfClass("Tool") ~= tool then return end
+
+        -- Let the inventory attributes settle, then classify the equipped instance again.
+        task.wait(0.18)
+        if not farmIsRunning() or not tool.Parent or isFarmTargetTool(tool)
+            or lp:GetAttribute("LocalKickBusy") == true
+            or lp:GetAttribute("IsKicking") == true then return end
+        local sold = pcall(function() sellRemote:InvokeServer() end)
+        task.wait(0.2)
+        return sold
+    end
+    local function sellUnwantedAtBase()
+        if not farmIsRunning() or not teleportToOwnPlot() then return false end
+        task.wait(0.35)
+        local idleDeadline = os.clock() + 4
+        while farmIsRunning() and os.clock() < idleDeadline
+            and (Players.LocalPlayer:GetAttribute("LocalKickBusy") == true
+                or Players.LocalPlayer:GetAttribute("IsKicking") == true) do
+            task.wait(0.1)
+        end
+
+        local lp = Players.LocalPlayer
+        local character = lp.Character
+        local backpack = lp:FindFirstChild("Backpack")
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        local net = getNetwork()
+        local sellRemote = net and net:FindFirstChild("ref_B_Sell")
+        if backpack and humanoid and sellRemote and farmEntities and farmMutationData then
+            local tools = {}
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if tool:IsA("Tool") then table.insert(tools, tool) end
+            end
+            local held = character and character:FindFirstChildOfClass("Tool")
+            if held then table.insert(tools, held) end
+            for _, tool in ipairs(tools) do
+                if not farmIsRunning() then break end
+                sellUnwantedTool(tool, humanoid, backpack, sellRemote)
+            end
+        end
+
+        if not farmIsRunning() then return false end
+        task.wait(0.2)
+        return teleportToKick()
+    end
+    autoFarmOnKickTeleport = function()
+        if not farmIsRunning() then return end
+        kickTeleportCount = kickTeleportCount + 1
+        if kickTeleportCount < 5 then return end
+        if sellUnwantedAtBase() then
+            kickTeleportCount = 0
+        end
+    end
     autoFarmPrepareKick = function()
         local currentPlan = getFarmPlan()
         if #currentPlan == 0 then return end
@@ -4665,52 +4742,13 @@ autoFarmStart = function()
     end
     KickHandlers.onToggle(true)
     autoFarmRefresh()
-    task.spawn(function()
-        task.wait(1.5)
-        while autoFarmEnabled and autoFarmStarted and autoFarmToken == id do
-            local kickGui = PlayerGui:FindFirstChild("KickMinigame")
-            local lp = Players.LocalPlayer
-            local character = lp.Character
-            local busyNow = lp:GetAttribute("LocalKickBusy") == true
-                or lp:GetAttribute("IsKicking") == true
-                or (kickGui and kickGui.Enabled)
-            if not busyNow then
-                local backpack = lp:FindFirstChild("Backpack")
-                local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-                local net = getNetwork()
-                local sell = net and net:FindFirstChild("ref_B_Sell")
-                if backpack and humanoid and sell and farmEntities and farmMutationData then
-                    local tools = {}
-                    for _, tool in ipairs(backpack:GetChildren()) do
-                        if tool:IsA("Tool") then table.insert(tools, tool) end
-                    end
-                    local held = character and character:FindFirstChildOfClass("Tool")
-                    if held then table.insert(tools, held) end
-                    for _, tool in ipairs(tools) do
-                        if not (autoFarmEnabled and autoFarmStarted and autoFarmToken == id) then break end
-                        if isUmaTool(tool) and not isFarmTargetTool(tool) then
-                            if not (lp:GetAttribute("LocalKickBusy") == true
-                                or lp:GetAttribute("IsKicking") == true) then
-                                pcall(function()
-                                    humanoid:EquipTool(tool)
-                                    task.wait(0.12)
-                                    sell:InvokeServer()
-                                end)
-                                task.wait(0.1)
-                            end
-                        end
-                    end
-                end
-            end
-            task.wait(0.75)
-        end
-    end)
     autoFarmRefresh()
 end
 
 autoFarmStop = function()
     autoFarmStarted = false
     autoFarmPrepareKick = nil
+    autoFarmOnKickTeleport = nil
     KickHandlers.onToggle(false)
     local net = getNetwork()
     local setter = net and net:FindFirstChild("rev_KickPowerSelection_Set")
@@ -4790,13 +4828,14 @@ collapseMainForFarm = function()
     if not MainFrame then return end
     mainWindowTransition = mainWindowTransition + 1
     local transition = mainWindowTransition
-    autoFarmMainCollapsed = true
     if not MainFrame.Visible then
+        autoFarmMainCollapsed = false
         MainFrame.Size = UDim2.fromScale(0, 0)
         MainFrame.BackgroundTransparency = 1
         if FloatBtn then FloatBtn.Visible = true end
         return
     end
+    autoFarmMainCollapsed = true
     local closing = tween(MainFrame, CONFIG.AnimTime, {
         Size = UDim2.fromScale(0, 0),
         BackgroundTransparency = 1,
@@ -4809,23 +4848,17 @@ collapseMainForFarm = function()
 end
 
 restoreMainAfterFarm = function()
-    if not MainFrame then return end
-    local wasCollapsed = autoFarmMainCollapsed
+    if not MainFrame or not autoFarmMainCollapsed then return end
     mainWindowTransition = mainWindowTransition + 1
     autoFarmMainCollapsed = false
     if FloatBtn then FloatBtn.Visible = false end
     MainFrame.Visible = true
-    if wasCollapsed then
-        MainFrame.Size = UDim2.fromScale(0, 0)
-        MainFrame.BackgroundTransparency = 1
-        tween(MainFrame, CONFIG.AnimTime, {
-            Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale),
-            BackgroundTransparency = CONFIG.Transparency,
-        }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    else
-        MainFrame.Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale)
-        MainFrame.BackgroundTransparency = CONFIG.Transparency
-    end
+    MainFrame.Size = UDim2.fromScale(0, 0)
+    MainFrame.BackgroundTransparency = 1
+    tween(MainFrame, CONFIG.AnimTime, {
+        Size = UDim2.fromScale(CONFIG.WidthScale, CONFIG.HeightScale),
+        BackgroundTransparency = CONFIG.Transparency,
+    }, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 end
 
 local floatingImage = getCachedAsset("floating_button", ICON_URLS.floating_button)
@@ -4959,6 +4992,8 @@ end
 
 btnMinimize.MouseButton1Click:Connect(
 function()
+
+    autoFarmMainCollapsed = false
 
 local t =  
         tween(  
