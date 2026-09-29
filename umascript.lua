@@ -4280,6 +4280,26 @@ local function buildFarmFilterRow(parent, values, stateMap, yOffset)
         local chipText = chip:FindFirstChild("ChipText")
         if chipText then chipText.TextSize = 9 end
         chip.LayoutOrder = #scroll:GetChildren()
+        local sideColor = Instance.new("Frame")
+        sideColor.Name = "FarmSideLeft"
+        sideColor.Position = UDim2.new(0, 2, 0, 4)
+        sideColor.Size = UDim2.new(0, 1, 1, -8)
+        sideColor.BackgroundColor3 = CONFIG.AccentColor
+        sideColor.BackgroundTransparency = 0.55
+        sideColor.BorderSizePixel = 0
+        sideColor.Active = false
+        sideColor.ZIndex = 24
+        sideColor.Parent = chip
+        local sideRight = Instance.new("Frame")
+        sideRight.Name = "FarmSideRight"
+        sideRight.Position = UDim2.new(1, -3, 0, 4)
+        sideRight.Size = UDim2.new(0, 1, 1, -8)
+        sideRight.BackgroundColor3 = CONFIG.AccentColor
+        sideRight.BackgroundTransparency = 0.55
+        sideRight.BorderSizePixel = 0
+        sideRight.Active = false
+        sideRight.ZIndex = 24
+        sideRight.Parent = chip
         chip.Activated:Connect(function()
             stateMap[value] = not stateMap[value] and true or nil
             if autoFarmRefresh then autoFarmRefresh() end
@@ -4572,10 +4592,16 @@ local function updateFarmFilterColors()
                 child.BackgroundTransparency = 0
                 local chipStroke = child:FindFirstChild("FarmChipStroke")
                 if chipStroke then
-                    chipStroke.Color = not available and Color3.fromRGB(255, 28, 45)
-                        or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
-                    chipStroke.Transparency = not available and 0.02 or (chosen and 0 or 0.88)
-                    chipStroke.Thickness = not available and 0.8 or (chosen and 1 or 0.8)
+                    chipStroke.Transparency = 1
+                end
+                local sideColor = not available and Color3.fromRGB(255, 28, 45)
+                    or (chosen and Color3.new(1, 1, 1) or CONFIG.AccentColor)
+                for _, edgeName in ipairs({ "FarmSideLeft", "FarmSideRight" }) do
+                    local edge = child:FindFirstChild(edgeName)
+                    if edge then
+                        edge.BackgroundColor3 = sideColor
+                        edge.BackgroundTransparency = chosen and available and 0 or 0.55
+                    end
                 end
                 child.Active = available
                 child.AutoButtonColor = false
