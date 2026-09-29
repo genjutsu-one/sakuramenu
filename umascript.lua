@@ -1577,7 +1577,7 @@ local FlyHandlers = {
     end,
 }
 
-local function teleportToKick()
+local function teleportToKick(direct)
     local areas = workspace:FindFirstChild("Areas")
     local zone = areas and areas:FindFirstChild("KickReady")
     local char = Players.LocalPlayer.Character
@@ -1594,16 +1594,21 @@ local function teleportToKick()
             + Vector3.new(0, 3, 0)
     ) * zone.CFrame.Rotation
 
+    if direct then
+        root.CFrame = stationCFrame
+        root.AssemblyLinearVelocity = Vector3.zero
+        root.AssemblyAngularVelocity = Vector3.zero
+        return true
+    end
+
     root.CFrame = inFront
     root.AssemblyLinearVelocity = Vector3.zero
     root.AssemblyAngularVelocity = Vector3.zero
-    for step = 1, 6 do
-        if not root.Parent then return false end
-        root.CFrame = inFront:Lerp(stationCFrame, step / 6)
-        root.AssemblyLinearVelocity = Vector3.zero
-        root.AssemblyAngularVelocity = Vector3.zero
-        task.wait(0.04)
-    end
+    task.wait(0.08)
+    if not root.Parent then return false end
+    root.CFrame = stationCFrame
+    root.AssemblyLinearVelocity = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
     return true
 end
 
@@ -1614,6 +1619,7 @@ local KickHandlers
 do
     local lp = Players.LocalPlayer
     local active, token = false, 0
+    local didInitialKickTeleport = false
     local kickEvent
     local zoneController
 
@@ -1688,6 +1694,16 @@ do
         return controller.Zone == "KickReady"
     end
 
+    local function teleportForKick()
+        local ok = teleportToKick(didInitialKickTeleport)
+        if not ok then return false end
+        didInitialKickTeleport = true
+        if autoFarmOnKickTeleport then
+            pcall(autoFarmOnKickTeleport)
+        end
+        return true
+    end
+
     local function cameraFree()
         local humanoid = getCharacterParts()
         local camera = workspace.CurrentCamera
@@ -1725,9 +1741,7 @@ do
                 local timedOut = os.clock() - startedAt > 45
                 if not returnedToZone and (released or timedOut) then
                     task.wait(0.4)
-                    if teleportToKick() and autoFarmOnKickTeleport then
-                        pcall(autoFarmOnKickTeleport)
-                    end
+                    teleportForKick()
                     returnedToZone = true
                 end
             end
@@ -1745,9 +1759,7 @@ do
             if busy() then
                 waitKickCycle(id)
             elseif not nearKickZone() then
-                if teleportToKick() and autoFarmOnKickTeleport then
-                    pcall(autoFarmOnKickTeleport)
-                end
+                teleportForKick()
                 waitFor(id, function()
                     return nearKickZone() and ready()
                 end, 5)
@@ -1770,6 +1782,7 @@ do
         onToggle = function(state)
             active = state
             token = token + 1
+            didInitialKickTeleport = false
             if state then
                 task.spawn(loop, token)
             end
@@ -4716,7 +4729,7 @@ autoFarmStart = function()
 
         if not farmIsRunning() then return false end
         task.wait(0.2)
-        return teleportToKick()
+        return teleportToKick(true)
     end
     autoFarmOnKickTeleport = function()
         if not farmIsRunning() then return end
